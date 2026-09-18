@@ -1,0 +1,7 @@
+{
+  "name": "techtacticsportal",
+  "version": "1.0.41",
+  "description": "TechTactics customer, employee, and admin portal web client",
+  "homepage": "index.html",
+  "404": "404.html"
+}

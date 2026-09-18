@@ -1,0 +1,29 @@
+{
+  "defaults": {
+    "project": 1
+  },
+  "actives": {
+    "project": 1,
+    "env": 1
+  },
+  "projects": [
+    {
+      "idx": 1,
+      "id": "50640000000038002",
+      "name": "TechTacticsPortal",
+      "domain": {
+        "id": "10124080596",
+        "name": "techtacticsportal-909625644.development"
+      },
+      "timezone": "America/Chicago",
+      "env": [
+        {
+          "idx": 1,
+          "id": "909625644",
+          "name": "Development",
+          "type": 3
+        }
+      ]
+    }
+  ]
+}

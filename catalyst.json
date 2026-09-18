@@ -1,0 +1,10 @@
+{
+  "appsail": [
+    {
+      "name": "business-agents",
+      "source": "agents-appsail/business-agents",
+      "runtime": "node18",
+      "command": "node src/server.js"
+    }
+  ]
+}

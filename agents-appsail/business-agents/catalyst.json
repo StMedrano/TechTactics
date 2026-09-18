@@ -1,0 +1,10 @@
+{
+  "appsail": [
+    {
+      "name": "business-agents",
+      "source": ".",
+      "runtime": "node18",
+      "command": "npm start"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+# Local environment values and credentials
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+.npmrc
+
+# Dependencies and caches
+node_modules/
+.npm-cache/
+.pnpm-store/
+.cache/
+.vite/
+
+# Generated builds and deployment archives
+dist/
+build/
+bin/
+obj/
+coverage/
+*.tsbuildinfo
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+
+# Local logs and tool state
+*.log
+.catalyst/
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+*.user
+*.suo

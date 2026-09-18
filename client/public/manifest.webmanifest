@@ -1,0 +1,63 @@
+{
+  "id": "./",
+  "name": "TechTactics Portal",
+  "short_name": "TechTactics",
+  "description": "Customer, employee, and admin portal for TechTactics smart home services.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#122033",
+  "theme_color": "#d9a441",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "assets/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/techtactics-logo.png",
+      "sizes": "8000x4500",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Portal Login",
+      "short_name": "Login",
+      "description": "Open the TechTactics portal login.",
+      "url": "./#/login",
+      "icons": [{ "src": "assets/pwa-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Request Assistance",
+      "short_name": "Request",
+      "description": "Open the customer request form.",
+      "url": "./#/portal/customer/request-help",
+      "icons": [{ "src": "assets/pwa-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "My Dispatches",
+      "short_name": "Dispatches",
+      "description": "Open employee or admin dispatches.",
+      "url": "./#/portal/employee/jobs",
+      "icons": [{ "src": "assets/pwa-icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

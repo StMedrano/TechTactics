@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TechTactics">
+  <defs>
+    <linearGradient id="bg" x1="72" x2="440" y1="72" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f0c97a"/>
+      <stop offset="1" stop-color="#d9a441"/>
+    </linearGradient>
+    <linearGradient id="house" x1="132" x2="380" y1="132" y2="384" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17283d"/>
+      <stop offset="1" stop-color="#0d1624"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#101820"/>
+  <rect x="34" y="34" width="444" height="444" rx="94" fill="url(#bg)" opacity=".96"/>
+  <path d="M118 247 256 142l138 105v142a25 25 0 0 1-25 25H143a25 25 0 0 1-25-25V247Z" fill="url(#house)"/>
+  <path d="m91 247 165-126 165 126" fill="none" stroke="#101820" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m111 246 145-109 145 109" fill="none" stroke="#f0c97a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="256" cy="284" r="42" fill="#f0c97a"/>
+  <path d="M206 361h100M206 326h100" stroke="#f0c97a" stroke-width="22" stroke-linecap="round"/>
+  <path d="M256 241v84" stroke="#101820" stroke-width="18" stroke-linecap="round"/>
+  <path d="M222 284h68" stroke="#101820" stroke-width="18" stroke-linecap="round"/>
+</svg>
