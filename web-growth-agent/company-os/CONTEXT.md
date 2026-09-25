@@ -30,3 +30,28 @@ For build/delivery work, include:
 ## Context rule
 
 Do not dump the entire company history into every task. Pull durable facts from `MEMORY.md` and decision rationale from `DECISIONS.md`, then combine them with the current work record.
+
+## Accounting / Tax context
+
+Include only the necessary:
+- Accounting period and entity/business scope
+- Relevant Zoho Books report/transaction evidence
+- Reconciliation status and open bookkeeping questions
+- Tax year and jurisdiction when tax treatment is discussed
+- Missing source documents
+- Required owner/CPA/EA/tax-attorney decision
+
+Do not include bank/tax identifiers or payroll/customer financial details in ordinary agent-to-agent email.
+
+## Legal context
+
+Include:
+- Exact document/matter
+- Parties and effective/renewal/deadline dates
+- Applicable jurisdiction when known
+- Relevant clauses/obligations
+- Current business objective
+- Open factual questions
+- Required owner/attorney decision
+
+Do not infer governing law, privilege, liability, or enforceability when the necessary facts or current law are missing.
