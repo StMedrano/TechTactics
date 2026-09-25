@@ -12,6 +12,9 @@ export type LeadStage =
 
 export type AgentRole = "manager" | "scout" | "auditor" | "designer" | "sales" | "accounting" | "legal";
 
+export type LeadSource = "gemini_search" | "osm_overpass" | "google_places" | "fixture" | "manual";
+export type WebsiteDiscoveryStatus = "found" | "not_found" | "unknown" | "verified_absent";
+
 export interface AuditEvidence {
   checkedAt: string;
   reachable: boolean;
@@ -83,8 +86,11 @@ export interface CommunicationRecord {
 
 export interface Lead {
   id: string;
-  source: "google_places" | "fixture" | "manual";
+  source: LeadSource;
   sourceId?: string;
+  sourceUrls?: string[];
+  discoveryQueries?: string[];
+  websiteDiscoveryStatus?: WebsiteDiscoveryStatus;
   businessName: string;
   category?: string;
   market?: string;
