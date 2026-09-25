@@ -50,6 +50,44 @@ See `.env.example`. Google Places Text Search uses an explicit field mask to con
 
 Google Places data is subject to Google Maps Platform terms, attribution, and storage/caching rules. Review those requirements before production use.
 
+
+## Zoho Mail MCP
+
+The agent can use Zoho Mail through Zoho's MCP server while keeping outbound customer email behind the existing human approval gate.
+
+1. In Zoho MCP, create a server that includes Zoho Mail.
+2. Enable only the mail tools this project uses: getMailAccounts, getAccountDetails, listEmails, SearchEmails, getMessageContent, getMessageAttachmentInfo, sendEmail, and sendReplyMail.
+3. For a server/headless deployment, use Zoho's shared connection authorization mode so the runtime does not need an interactive login on every call.
+4. Store the generated server URL in ZOHO_MCP_URL. Treat this URL like a password and never commit it.
+5. Configure any internal role addresses with WGA_MANAGER_EMAIL, WGA_SCOUT_EMAIL, WGA_AUDITOR_EMAIL, WGA_DESIGNER_EMAIL, and WGA_SALES_EMAIL.
+
+Connection test:
+
+    npm run wga -- zoho-status
+
+Read/search mail without mutation:
+
+    npm run wga -- mail-read --task "Find unread replies from website prospects and summarize the requests."
+
+Set a lead email when one was not discovered from a mailto link:
+
+    npm run wga -- contact-email --lead <lead-id> --email owner@example.com
+
+Customer outreach remains two-step. First approve the demo-ready lead, then explicitly send:
+
+    npm run wga -- approve --lead <lead-id>
+    npm run wga -- send --lead <lead-id>
+
+For a reviewed reply to an existing Zoho message:
+
+    npm run wga -- mail-reply --message-id <zoho-message-id> --body "Thanks for getting back to us..."
+
+Internal role-to-role email is also explicit and restricted to configured role addresses:
+
+    npm run wga -- agent-mail --from sales --to manager --subject "Prospect replied" --body "Please review the latest response."
+
+Read-only mail access never receives a send/reply tool. The customer send path requires the lead to be approved, have a reviewed outreach draft, and have a valid contact email. Initial customer sends are recorded and duplicate initial sends are blocked.
+
 ## Packages used by the sales agent
 
 - **Launch**: small brochure site / first website

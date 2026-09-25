@@ -27,6 +27,7 @@ export async function auditLead(id: string, store = new LeadStore()): Promise<Le
   const scored: Lead = {
     ...lead,
     audit,
+    contactEmail: lead.contactEmail || audit?.contactEmail,
     stage: lead.stage === "new" ? "audited" : lead.stage,
     updatedAt: nowIso()
   };
