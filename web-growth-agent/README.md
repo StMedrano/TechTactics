@@ -2,7 +2,7 @@
 
 A human-approved local website-sales pipeline for TechTactics.
 
-The application discovers businesses through the Google Places API, records whether a website is present, audits existing websites using deterministic checks, scores opportunities with visible evidence, generates personalized sales assets with OpenAI, builds private static demo pages, and tracks leads through a simple pipeline.
+The application discovers businesses through the Google Places API, records whether a website is present, audits existing websites using deterministic checks, scores opportunities with visible evidence, generates personalized sales assets with Gemini, builds private static demo pages, and tracks leads through a simple pipeline.
 
 ## Safety and operating principle
 
@@ -119,7 +119,7 @@ Pricing is configurable in `src/packages.ts` and should be reviewed by TechTacti
 - `src/scout.ts` — local business discovery
 - `src/audit.ts` — deterministic site inspection
 - `src/score.ts` — transparent opportunity scoring
-- `src/ai.ts` — OpenAI sales asset generation
+- `src/ai.ts` — Gemini sales asset generation
 - `src/site.ts` — private static demo generator
 - `src/store.ts` — JSON persistence
 - `src/pipeline.ts` — workflow orchestration
