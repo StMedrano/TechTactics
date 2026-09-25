@@ -40,18 +40,18 @@ export default function EmployeeDashboardPage() {
     <PortalLayout title="Employee Dashboard">
       {error && <Card title="Load Error"><p>{error}</p></Card>}
       <div className="grid grid-3">
-        <StatCard label="Time Clock" value={data.profile.isClockedIn ? 'Clocked In' : 'Clocked Out'} helper="Jobs stay hidden until clocked in" />
-        <StatCard label="Active Jobs" value={data.jobs.length} helper="Assigned service requests" />
+        <StatCard label="Time Clock" value={data.profile.isClockedIn ? 'Clocked In' : 'Clocked Out'} helper="Assigned projects stay hidden until clocked in" />
+        <StatCard label="Active Projects" value={data.jobs.length} helper="Assigned website projects and requests" />
         <StatCard label="Weekly Hours" value={data.profile.weeklyHours || 0} helper="Current pay period hours" />
       </div>
 
       <div className="grid grid-2 portal-grid-gap">
-        <Card title="Assigned Jobs">
+        <Card title="Assigned Projects">
           <ul className="clean-list">
             {data.jobs.map((job) => (
               <li key={job.id}>#{job.id} • {job.type} • {job.category} <span>{job.status}</span></li>
             ))}
-            {!data.jobs.length && <li>No jobs are assigned yet.</li>}
+            {!data.jobs.length && <li>No website projects are assigned yet.</li>}
           </ul>
         </Card>
         <Card title="Current Shift">
@@ -59,7 +59,7 @@ export default function EmployeeDashboardPage() {
             Active Shift Started:{' '}
             <strong>{data.profile.activeTimeEntry?.startedAt ? formatDateTime(data.profile.activeTimeEntry.startedAt) : '-'}</strong>
           </p>
-          <p>{data.profile.payType} technician compensation is displayed in the pay section.</p>
+          <p>{data.profile.payType} team compensation is displayed in the pay section.</p>
           <p>Total Recorded Shifts: <strong>{data.timeEntries.length}</strong></p>
         </Card>
       </div>
