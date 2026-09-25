@@ -86,7 +86,7 @@ Internal role-to-role email is also explicit and restricted to configured role a
 
     npm run wga -- agent-mail --from sales --to manager --subject "Prospect replied" --body "Please review the latest response."
 
-Read-only mail access never receives a send/reply tool. The customer send path requires the lead to be approved, have a reviewed outreach draft, and have a valid contact email. Initial customer sends are recorded and duplicate initial sends are blocked.
+Read-only mail access never receives a send/reply tool. The customer send path requires the lead to be approved, have a reviewed outreach draft, and have a valid contact email. Initial customer sends are reserved durably before Zoho is called and duplicate initial sends are blocked. If a process/provider failure leaves a send ambiguous, check the Zoho Sent folder and run `reconcile-send --lead <id> --result sent|not-sent` before any retry.
 
 ## Accounting / Tax and Legal assistants
 
