@@ -1,5 +1,3 @@
-import { assetPath } from '../utils/assets'
-
 export const roleHomes = {
   customer: '/portal/customer',
   employee: '/portal/employee',
@@ -14,31 +12,101 @@ export const sampleUsers = {
 
 export const marketingData = {
   hero: {
-    kicker: 'Smart home installs • Repairs • Secure connections',
-    title: ['SMART SOLUTIONS.', 'SECURE CONNECTIONS.'],
+    kicker: 'Web design • Development • Automation',
+    title: ['WEBSITES BUILT TO', 'WIN MORE BUSINESS.'],
     text:
-      'TechTactics designs and installs modern smart home systems—security, networking, audio/video, and automation—built clean, built safe, built right.',
+      'TechTactics builds modern websites for local businesses that need a stronger online presence, clearer messaging, better lead capture, and a professional experience on every screen.',
   },
   services: [
     {
-      title: 'Smart Security',
-      text: 'Cameras, alarm systems, doorbells, sensors, and monitoring-ready setups.',
-      image: assetPath('assets/service-security.png'),
+      eyebrow: 'Build',
+      title: 'New Business Websites',
+      text: 'Professional websites for businesses that need to launch, replace a social-only presence, or finally establish a credible home online.',
     },
     {
-      title: 'Networking / Wi‑Fi',
-      text: 'Whole-home Wi‑Fi, wired drops, mesh tuning, and guest networks.',
-      image: assetPath('assets/service-wifi.png'),
+      eyebrow: 'Improve',
+      title: 'Website Redesigns',
+      text: 'Modernize slow, dated, confusing, or mobile-unfriendly websites with better structure, messaging, calls to action, and performance.',
     },
     {
-      title: 'Audio / Video',
-      text: 'TV mounting, soundbars, whole-home audio, and clean cable management.',
-      image: assetPath('assets/service-audio.png'),
+      eyebrow: 'Convert',
+      title: 'Lead, Booking & Sales Flows',
+      text: 'Turn visits into action with quote requests, appointment booking, forms, product or service pages, payments, and conversion-focused calls to action.',
     },
     {
-      title: 'Smart Switches',
-      text: 'Lighting control, scenes, automation, and app setup.',
-      image: assetPath('assets/service-switches.png'),
+      eyebrow: 'Connect',
+      title: 'Business Integrations',
+      text: 'Connect websites with tools such as CRM, invoicing, email, analytics, forms, automations, customer portals, and other business systems.',
+    },
+  ],
+  packages: [
+    {
+      label: 'Essential',
+      name: 'Launch',
+      summary: 'A focused professional site for a local business that needs a strong foundation.',
+      features: [
+        'Up to 5 core pages',
+        'Responsive mobile-first design',
+        'Contact or quote-request flow',
+        'Basic on-page SEO structure',
+        'Analytics and conversion tracking setup',
+      ],
+    },
+    {
+      label: 'Most Flexible',
+      name: 'Growth',
+      summary: 'A larger lead-generation site for businesses ready to market multiple services or locations.',
+      features: [
+        'Expanded service and landing pages',
+        'Conversion-focused page structure',
+        'Booking, forms, or CRM connection',
+        'Local SEO content structure',
+        'Performance and analytics review',
+      ],
+    },
+    {
+      label: 'Advanced',
+      name: 'Business Platform',
+      summary: 'Custom web functionality for businesses that need more than a traditional marketing website.',
+      features: [
+        'Custom workflows or web app features',
+        'Customer or staff portal options',
+        'API and business-system integrations',
+        'Automation opportunities',
+        'Ongoing support options',
+      ],
+    },
+  ],
+  problems: [
+    {
+      title: 'No Website Yet',
+      text: 'Create a professional online home so customers can understand the business, services, location, and next step.',
+    },
+    {
+      title: 'Outdated Website',
+      text: 'Replace an old visual style, weak mobile experience, broken content, or confusing navigation with a modern structure.',
+    },
+    {
+      title: 'Traffic But Few Leads',
+      text: 'Clarify the offer, strengthen calls to action, reduce friction, and make it easier for visitors to contact or book.',
+    },
+    {
+      title: 'Too Much Manual Work',
+      text: 'Connect forms, scheduling, customer data, notifications, invoicing, and other workflows where automation makes sense.',
+    },
+  ],
+  process: [
+    {
+      title: '1) Review',
+      text: 'We learn what the business sells, who it serves, what the current website is doing, and where customers are getting stuck.',
+    },
+    {
+      title: '2) Build',
+      text: 'We create the page structure, design, content direction, calls to action, and integrations around the agreed project scope.',
+    },
+    {
+      title: '3) Launch & Improve',
+      text: 'We test the site, launch it, connect analytics, and identify the next improvements based on real business goals.',
     },
   ],
 }
@@ -46,16 +114,16 @@ export const marketingData = {
 export const customerServices = [
   {
     id: 1,
-    serviceName: 'Whole-Home Wi‑Fi Optimization',
-    category: 'Networking',
+    serviceName: 'Website Care & Maintenance',
+    category: 'Website Support',
     status: 'Active',
     startedAt: '2026-02-18',
     monthlyPrice: 29.99,
   },
   {
     id: 2,
-    serviceName: 'Front Door Camera Monitoring',
-    category: 'Security',
+    serviceName: 'Analytics & Conversion Tracking',
+    category: 'Website Growth',
     status: 'Active',
     startedAt: '2026-01-04',
     monthlyPrice: 19.99,
@@ -67,27 +135,27 @@ export const serviceRequests = [
     id: 1042,
     customerId: 'customer-1',
     customerName: 'Jordan Customer',
-    type: 'Repair',
-    category: 'Wi‑Fi',
-    address: '612 S Burnside Ave Suite B, Gonzales, LA 70737',
-    description: 'Back bedroom has poor Wi‑Fi signal and smart TV buffering.',
+    type: 'Website Update',
+    category: 'Content & Page Updates',
+    address: 'Prairieville, LA',
+    description: 'Add a new service-area page and improve the quote-request call to action.',
     status: 'Accepted',
     assignedEmployee: 'Taylor Employee',
     updatedAt: '2026-04-11 9:30 AM',
-    note: 'Technician scheduled for Tuesday morning.',
+    note: 'Content update is approved and scheduled for the next project work block.',
   },
   {
     id: 1043,
     customerId: 'customer-1',
     customerName: 'Jordan Customer',
-    type: 'New Install',
-    category: 'Security',
-    address: '612 S Burnside Ave Suite B, Gonzales, LA 70737',
-    description: 'Need estimate for a 4-camera system with app access.',
-    status: 'Waiting on Equipment',
+    type: 'Website Redesign',
+    category: 'Website Growth',
+    address: 'Prairieville, LA',
+    description: 'Need an estimate to redesign the current site, improve mobile usability, and add lead capture.',
+    status: 'Quote Sent',
     assignedEmployee: 'Taylor Employee',
     updatedAt: '2026-04-10 3:10 PM',
-    note: 'Waiting for customer approval on equipment package.',
+    note: 'Website redesign quote is waiting for customer approval.',
   },
 ]
 
@@ -99,7 +167,7 @@ export const invoices = [
     amount: 249.0,
     invoiceNumber: 'TT-1042',
     paymentLink: 'https://example.com/pay/TT-1042',
-    description: 'Repair and mesh tuning for Wi‑Fi coverage issue.',
+    description: 'Website content update and conversion improvements.',
   },
   {
     id: 'INV-3015',
@@ -108,7 +176,7 @@ export const invoices = [
     amount: 899.0,
     invoiceNumber: 'TT-1043',
     paymentLink: 'https://example.com/pay/TT-1043',
-    description: '4-camera installation estimate.',
+    description: 'Website redesign project estimate.',
   },
 ]
 
