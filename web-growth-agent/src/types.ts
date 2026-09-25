@@ -58,6 +58,17 @@ export interface SalesAssets {
   recommendedPackage: "Launch" | "Growth" | "Pro";
 }
 
+export interface OutreachSendState {
+  status: "pending" | "needs_review" | "sent";
+  attemptId: string;
+  startedAt: string;
+  to: string;
+  subject: string;
+  sentAt?: string;
+  providerCallId?: string;
+  error?: string;
+}
+
 export interface CommunicationRecord {
   at: string;
   channel: "zoho_email";
@@ -88,6 +99,8 @@ export interface Lead {
   updatedAt: string;
   stage: LeadStage;
   approvedForOutreach: boolean;
+  approvedOutreachGeneratedAt?: string;
+  outreachSend?: OutreachSendState;
   audit?: AuditEvidence;
   score?: OpportunityScore;
   salesAssets?: SalesAssets;
