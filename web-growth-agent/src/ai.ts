@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 import { config } from "./config.js";
 import { packages, recommendPackage, websiteCare } from "./packages.js";
@@ -52,10 +52,10 @@ function extractJson(text: string): unknown {
 }
 
 export async function generateSalesAssets(lead: Lead): Promise<SalesAssets> {
-  if (!config.openAIKey) return fallbackAssets(lead);
+  if (!config.geminiApiKey) return fallbackAssets(lead);
 
   const selected = recommendPackage(lead);
-  const client = new OpenAI({ apiKey: config.openAIKey });
+  const client = new GoogleGenAI({ apiKey: config.geminiApiKey });
   const factualRecord = {
     businessName: lead.businessName,
     category: lead.category,
@@ -91,12 +91,15 @@ Rules:
 FACTUAL RECORD:
 ${JSON.stringify(factualRecord, null, 2)}`;
 
-  const response = await client.responses.create({
-    model: config.openAIModel,
-    input: prompt
+  const response = await client.models.generateContent({
+    model: config.geminiModel,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json"
+    }
   });
 
-  const parsed = AiAssetSchema.parse(extractJson(response.output_text));
+  const parsed = AiAssetSchema.parse(extractJson(response.text ?? ""));
   return {
     generatedAt: nowIso(),
     ...parsed,
