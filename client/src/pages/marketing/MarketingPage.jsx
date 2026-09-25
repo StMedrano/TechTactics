@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import MarketingLayout from '../../components/layout/MarketingLayout'
 import { marketingData } from '../../data/mockData'
-import { assetPath } from '../../utils/assets'
 import { scrollToSection } from '../../utils/scrollToSection'
 import { publicService } from '../../services/publicService'
+
+const inquiryHref =
+  'mailto:customercare@mytechtactics.com?subject=TechTactics%20Website%20Project%20Inquiry&body=Business%20name%3A%0ACurrent%20website%20(if%20any)%3A%0AWhat%20do%20you%20want%20the%20website%20to%20help%20you%20do%3F%0A'
 
 export default function MarketingPage() {
   const [reviews, setReviews] = useState([])
@@ -22,10 +23,7 @@ export default function MarketingPage() {
 
   return (
     <MarketingLayout>
-      <section className="hero-section">
-        <video autoPlay muted loop playsInline poster={assetPath('assets/hero-smarthome-poster.png')}>
-          <source src={assetPath('assets/hero-smarthome.mp4')} type="video/mp4" />
-        </video>
+      <section className="hero-section website-hero">
         <div className="hero-overlay" />
         <div className="container hero-grid">
           <div>
@@ -37,24 +35,28 @@ export default function MarketingPage() {
             </h1>
             <p>{marketingData.hero.text}</p>
             <div className="hero-actions">
-              <a className="btn btn-primary" href="#contact" onClick={scrollToSection('contact')}>Schedule a Consultation</a>
-              <a className="btn btn-secondary" href="#services" onClick={scrollToSection('services')}>Explore Services</a>
+              <a className="btn btn-primary" href={inquiryHref}>Request a Website Review</a>
+              <a className="btn btn-secondary" href="#packages" onClick={scrollToSection('packages')}>View Website Packages</a>
             </div>
             <div className="tag-row">
-              <span>Alarm Systems</span>
-              <span>Smart Thermostats</span>
-              <span>Whole-Home Audio</span>
-              <span>Smart Switches</span>
-              <span>Wi-Fi / Networking</span>
+              <span>Mobile-first</span>
+              <span>Local SEO foundations</span>
+              <span>Lead capture</span>
+              <span>Booking & forms</span>
+              <span>Business integrations</span>
             </div>
           </div>
 
           <div className="hero-panel">
-            <h3>Need service?</h3>
-            <p>Request help, review quotes, schedule work, and pay invoices from your secure customer portal.</p>
+            <div className="kicker">Website Opportunity Review</div>
+            <h3>Not sure what your business website needs?</h3>
+            <p>
+              Send us your business name and current website, if you have one. We will identify the biggest opportunities
+              around mobile usability, messaging, lead capture, local visibility, and conversion.
+            </p>
             <div className="stack gap-sm">
-              <Link className="btn btn-primary" to="/login">Portal Login</Link>
-              <Link className="btn btn-secondary" to="/login?mode=register">Create Account</Link>
+              <a className="btn btn-primary" href={inquiryHref}>Start My Review</a>
+              <a className="btn btn-secondary" href="tel:+12252109890">Call 225-210-9890</a>
             </div>
           </div>
         </div>
@@ -64,15 +66,16 @@ export default function MarketingPage() {
         <div className="container">
           <div className="section-head">
             <div>
-              <h2>Services</h2>
-              <p>Installations, upgrades, repairs, and ongoing support.</p>
+              <h2>Website Services</h2>
+              <p>Focused on helping local businesses look credible, get found, and turn visitors into customers.</p>
             </div>
-            <a className="btn btn-secondary" href="#contact" onClick={scrollToSection('contact')}>Get a Quote</a>
+            <a className="btn btn-secondary" href={inquiryHref}>Start a Project</a>
           </div>
+
           <div className="grid grid-4">
             {marketingData.services.map((item) => (
-              <article className="service-card" key={item.title}>
-                <img src={item.image} alt={item.title} />
+              <article className="info-card" key={item.title}>
+                <div className="service-eyebrow">{item.eyebrow}</div>
                 <h3>{item.title}</h3>
                 <p>{item.text}</p>
               </article>
@@ -81,47 +84,67 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="solutions" className="section alt-section">
+      <section id="packages" className="section alt-section">
         <div className="container">
-          <h2>Solutions that scale</h2>
-          <p className="section-copy">From a single device install to full-home automation.</p>
+          <div className="section-head">
+            <div>
+              <h2>Website Packages</h2>
+              <p>Clear starting points that can be adjusted to fit the business.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-3">
+            {marketingData.packages.map((pkg) => (
+              <article className="info-card package-card" key={pkg.name}>
+                <div className="kicker">{pkg.label}</div>
+                <h3>{pkg.name}</h3>
+                <p>{pkg.summary}</p>
+                <ul className="clean-list">
+                  {pkg.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                <a className="btn btn-secondary w-full" href={inquiryHref}>Ask About {pkg.name}</a>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="solutions" className="section">
+        <div className="container">
+          <h2>Common problems we solve</h2>
+          <p className="section-copy">
+            A business does not need a complicated website. It needs the right website for the next customer.
+          </p>
           <div className="grid grid-4">
-            {[
-              ['New Install', 'Plan, install, label, test, and walk-through.'],
-              ['Repair / Troubleshoot', 'Dead zones, offline devices, wiring issues, camera alignment, and more.'],
-              ['Upgrade', 'Modernize older setups without ripping everything out.'],
-              ['Ongoing Support', 'Help when you need it: updates, tuning, and device changes.'],
-            ].map(([title, text]) => (
-              <div className="info-card" key={title}>
-                <h3>{title}</h3>
-                <p>{text}</p>
+            {marketingData.problems.map((item) => (
+              <div className="info-card" key={item.title}>
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="process" className="section">
+      <section id="process" className="section alt-section">
         <div className="container">
           <h2>Our Process</h2>
           <div className="grid grid-3">
-            {[
-              ['1) Consult', 'We learn your goals, devices, space, and budget.'],
-              ['2) Design', 'We recommend equipment and a clean install plan.'],
-              ['3) Install & Support', 'We install, test, train, and stay available for support.'],
-            ].map(([title, text]) => (
-              <div className="info-card" key={title}>
-                <h3>{title}</h3>
-                <p>{text}</p>
+            {marketingData.process.map((step) => (
+              <div className="info-card" key={step.title}>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="reviews" className="section alt-section">
+      <section id="reviews" className="section">
         <div className="container">
-          <h2>Reviews</h2>
+          <h2>Client Feedback</h2>
           {reviews.length ? (
             <div className="grid grid-2">
               {reviews.map((review) => (
@@ -134,21 +157,23 @@ export default function MarketingPage() {
             </div>
           ) : (
             <div className="info-card">
-              <p>Customer reviews will appear here soon.</p>
+              <p>Website project case studies and client feedback will appear here as projects launch.</p>
             </div>
           )}
         </div>
       </section>
 
-      <section id="contact" className="section">
+      <section id="contact" className="section alt-section">
         <div className="container">
           <div className="cta-panel">
             <div>
-              <h2>Schedule a consultation</h2>
-              <p>Ready to upgrade your home? Use the portal to request service, or contact us for a quote.</p>
+              <h2>Ready for a website that works harder for your business?</h2>
+              <p>
+                Tell us what you do, where you serve customers, and what you want the website to accomplish.
+              </p>
             </div>
             <div className="stack gap-sm">
-              <Link className="btn btn-primary" to="/login">Portal Login</Link>
+              <a className="btn btn-primary" href={inquiryHref}>Request a Website Review</a>
               <div className="contact-lines">
                 <div>customercare@mytechtactics.com</div>
                 <div>225-210-9890</div>
