@@ -14,17 +14,19 @@ async function storeWith(lead: Lead): Promise<LeadStore> {
 }
 
 function lead(stage: Lead["stage"], approved: boolean): Lead {
+  const generatedAt = "2026-01-01T00:00:00.000Z";
   return {
     id: "mail-lead",
     source: "fixture",
     businessName: "Mail Test Business",
     contactEmail: "owner@example.com",
-    discoveredAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
+    discoveredAt: generatedAt,
+    updatedAt: generatedAt,
     stage,
     approvedForOutreach: approved,
+    approvedOutreachGeneratedAt: approved ? generatedAt : undefined,
     salesAssets: {
-      generatedAt: "2026-01-01T00:00:00.000Z",
+      generatedAt,
       businessSummary: "Summary",
       outreachDraft: "Reviewed outreach draft.",
       proposalMarkdown: "# Proposal",
@@ -45,29 +47,50 @@ describe("Zoho customer outreach gate", () => {
     expect(sender).not.toHaveBeenCalled();
   });
 
-  it("sends exactly once after approval and records the contact", async () => {
+  it("refuses a regenerated draft that does not match the approved version", async () => {
+    const changed = lead("approved", true);
+    changed.salesAssets = { ...changed.salesAssets!, generatedAt: "2026-02-01T00:00:00.000Z" };
+    const store = await storeWith(changed);
+    const sender = vi.fn().mockResolvedValue({ summary: "sent" });
+    await expect(sendApprovedOutreach("mail-lead", { store, sender })).rejects.toThrow(/version.*approved/i);
+    expect(sender).not.toHaveBeenCalled();
+  });
+
+  it("persists a reservation before sending and records success", async () => {
     const store = await storeWith(lead("approved", true));
-    const sender = vi.fn().mockResolvedValue({ summary: "sent", providerCallId: "provider-1" });
+    const sender = vi.fn(async () => {
+      const duringSend = await store.get("mail-lead");
+      expect(duringSend?.outreachSend?.status).toBe("pending");
+      return { summary: "sent", providerCallId: "provider-1" };
+    });
     const updated = await sendApprovedOutreach("mail-lead", { store, sender });
     expect(sender).toHaveBeenCalledTimes(1);
     expect(updated.stage).toBe("contacted");
+    expect(updated.outreachSend?.status).toBe("sent");
     expect(updated.communications).toHaveLength(1);
     expect(updated.communications?.[0].providerCallId).toBe("provider-1");
   });
 
-  it("blocks a duplicate initial outreach record", async () => {
-    const duplicate = lead("approved", true);
-    duplicate.communications = [{
-      at: "2026-01-01T00:00:00.000Z",
-      channel: "zoho_email",
-      kind: "customer_outreach",
-      direction: "outbound",
+  it("blocks retry when a previous send reservation exists", async () => {
+    const reserved = lead("approved", true);
+    reserved.outreachSend = {
+      status: "pending",
+      attemptId: "existing-attempt",
+      startedAt: "2026-01-01T00:00:00.000Z",
       to: "owner@example.com",
-      subject: "Already sent"
-    }];
-    const store = await storeWith(duplicate);
+      subject: "Existing attempt"
+    };
+    const store = await storeWith(reserved);
     const sender = vi.fn().mockResolvedValue({ summary: "sent" });
-    await expect(sendApprovedOutreach("mail-lead", { store, sender })).rejects.toThrow(/duplicate/i);
+    await expect(sendApprovedOutreach("mail-lead", { store, sender })).rejects.toThrow(/reconcile/i);
     expect(sender).not.toHaveBeenCalled();
+  });
+
+  it("marks a failed or ambiguous provider attempt for human review", async () => {
+    const store = await storeWith(lead("approved", true));
+    const sender = vi.fn().mockRejectedValue(new Error("provider timeout"));
+    await expect(sendApprovedOutreach("mail-lead", { store, sender })).rejects.toThrow(/provider timeout/i);
+    const stored = await store.get("mail-lead");
+    expect(stored?.outreachSend?.status).toBe("needs_review");
   });
 });
