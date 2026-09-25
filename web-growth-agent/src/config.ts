@@ -13,9 +13,10 @@ function optional(value: string | undefined): string | undefined {
 }
 
 export const config = {
-  googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY?.trim() || "",
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash",
+  scoutSource: process.env.WGA_SCOUT_SOURCE?.trim().toLowerCase() || "auto",
+  overpassUrl: process.env.WGA_OVERPASS_URL?.trim() || "https://overpass-api.de/api/interpreter",
   zohoMcpUrl: process.env.ZOHO_MCP_URL?.trim() || "",
   zohoBooksMcpUrl: process.env.ZOHO_BOOKS_MCP_URL?.trim() || "",
   zohoBooksReadTools: csv(process.env.WGA_ZOHO_BOOKS_READ_TOOLS, []),
