@@ -46,9 +46,13 @@ The approval boundary is intentional. Generated outreach remains a draft until a
 
 ## Configuration
 
-See `.env.example`. Google Places Text Search uses an explicit field mask to control returned data and billing. Website auditing never scrapes Google search-result pages; it only requests the business website URL supplied by the place record.
+See `.env.example`. The default model split is quota-aware:
 
-Google Places data is subject to Google Maps Platform terms, attribution, and storage/caching rules. Review those requirements before production use.
+- `GEMINI_MODEL=gemini-3.5-flash-lite` for high-volume routine AI work such as summaries, outreach drafts, proposals, demo copy, and Zoho orchestration.
+- `WGA_SCOUT_MODEL=gemini-2.5-flash-lite` for lead discovery with Google Search grounding.
+- `WGA_SCOUT_SOURCE=auto` tries Gemini Search first and falls back to OpenStreetMap Overpass for supported categories.
+
+No Google Maps/Places API key is required. A missing website during discovery is recorded as "not found during discovery," not as proof that the business has no website. The deterministic auditor verifies any discovered website before website-specific claims are used.
 
 
 ## Zoho Mail MCP

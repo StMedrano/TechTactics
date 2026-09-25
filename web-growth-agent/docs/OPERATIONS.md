@@ -50,8 +50,11 @@ Use `mail-read` to review incoming prospect mail and `mail-reply` only after the
 ## Cost controls
 - Scouting requires an explicit market and category.
 - Default live search is capped at 10 results per category from the CLI.
+- `WGA_SCOUT_MODEL` defaults to `gemini-2.5-flash-lite`; reserve its smaller daily quota for discovery only.
+- `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite` for higher-volume routine AI tasks.
 - AI generation runs only for an explicitly selected lead.
-- Gemini Google Search grounding may generate one or more billable search queries per scout request; keep market/category scopes deliberate.\n- OpenStreetMap Overpass is a best-effort fallback for supported category tags and should not be treated as a complete business directory.
+- Gemini Google Search grounding may generate billable searches; keep market/category scopes deliberate.
+- OpenStreetMap Overpass is a best-effort fallback for supported category tags and should not be treated as a complete business directory.
 
 
 ## Ambiguous Zoho send recovery

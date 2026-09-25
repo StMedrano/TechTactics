@@ -9,15 +9,30 @@ V1 is designed to run as a private TechTactics operations tool.
 - `WGA_HOST=0.0.0.0` only inside the container
 - Dashboard exposed through the homelab reverse proxy and protected with authentication
 
-## Gemini
-The Web Growth Agent uses Google's current `@google/genai` SDK. Configure:
+## Gemini model routing
+
+The Web Growth Agent uses Google's `@google/genai` SDK with two configurable model roles:
 
 ```env
 GEMINI_API_KEY=...
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
+WGA_SCOUT_MODEL=gemini-2.5-flash-lite
 ```
 
-If no Gemini key is configured, the existing deterministic fallback sales assets remain available.
+`GEMINI_MODEL` handles routine high-volume AI tasks such as sales assets, summaries, and Zoho orchestration.
+
+`WGA_SCOUT_MODEL` is reserved for lead discovery with Google Search grounding so scouting uses the model/quota pool intended for that workload.
+
+For discovery:
+
+```env
+WGA_SCOUT_SOURCE=auto
+WGA_OVERPASS_URL=https://overpass-api.de/api/interpreter
+```
+
+`auto` tries Gemini Search first and falls back to OpenStreetMap Overpass for supported categories. No Google Maps/Places API key is required.
+
+If no Gemini key is configured, deterministic fallback sales assets remain available, while `--source osm` can still scout supported categories without Gemini.
 
 ## Docker
 
