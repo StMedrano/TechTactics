@@ -17,6 +17,8 @@ export const config = {
   openAIKey: process.env.OPENAI_API_KEY?.trim() || "",
   openAIModel: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
   zohoMcpUrl: process.env.ZOHO_MCP_URL?.trim() || "",
+  zohoBooksMcpUrl: process.env.ZOHO_BOOKS_MCP_URL?.trim() || "",
+  zohoBooksReadTools: csv(process.env.WGA_ZOHO_BOOKS_READ_TOOLS, []),
   port: Number(process.env.WGA_PORT || "4317"),
   dataDir: path.resolve(process.cwd(), process.env.WGA_DATA_DIR || "./data"),
   artifactDir: path.resolve(process.cwd(), process.env.WGA_ARTIFACT_DIR || "./artifacts"),
@@ -37,6 +39,8 @@ export const config = {
     scout: optional(process.env.WGA_SCOUT_EMAIL),
     auditor: optional(process.env.WGA_AUDITOR_EMAIL),
     designer: optional(process.env.WGA_DESIGNER_EMAIL),
-    sales: optional(process.env.WGA_SALES_EMAIL)
+    sales: optional(process.env.WGA_SALES_EMAIL),
+    accounting: optional(process.env.WGA_ACCOUNTING_EMAIL),
+    legal: optional(process.env.WGA_LEGAL_EMAIL)
   } satisfies Record<AgentRole, string | undefined>
 };
