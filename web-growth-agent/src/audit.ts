@@ -12,6 +12,18 @@ function extractTitle(html: string): string | undefined {
   return match?.[1]?.replace(/\s+/g, " ").trim().slice(0, 200) || undefined;
 }
 
+function extractMailto(html: string): string | undefined {
+  const match = html.match(/href=["']mailto:([^"'?#\s>]+)(?:\?[^"']*)?["']/i);
+  const raw = match?.[1]?.trim();
+  if (!raw) return undefined;
+  try {
+    const decoded = decodeURIComponent(raw);
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(decoded) ? decoded : undefined;
+  } catch {
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw) ? raw : undefined;
+  }
+}
+
 function findOldCopyrightYear(html: string): number | undefined {
   const matches = [...html.matchAll(/(?:©|copyright(?:\s*&copy;)?)[^\d]{0,20}(20\d{2})/gi)]
     .map((match) => Number(match[1]))
@@ -46,6 +58,7 @@ export async function auditWebsite(url: string): Promise<AuditEvidence> {
     const raw = await response.text();
     const html = raw.slice(0, 2_000_000);
     const lower = html.toLowerCase();
+    const contactEmail = extractMailto(html);
     const oldCopyrightYear = findOldCopyrightYear(html);
 
     if (responseMs > 3000) notes.push(`Initial document response took ${responseMs} ms from the audit runner.`);
@@ -64,6 +77,7 @@ export async function auditWebsite(url: string): Promise<AuditEvidence> {
       responseMs,
       https,
       title: extractTitle(html),
+      contactEmail,
       hasMetaDescription:
         has(/<meta[^>]+name=["']description["'][^>]+content=["'][^"']+/i, html) ||
         has(/<meta[^>]+content=["'][^"']+["'][^>]+name=["']description["']/i, html),

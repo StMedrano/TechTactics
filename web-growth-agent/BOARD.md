@@ -12,6 +12,7 @@ This file is the human-readable operating board. Runtime truth lives in `data/le
 - [ ] Dashboard
 - [ ] Tests + CI
 - [ ] Documentation
+- [x] Zoho Mail MCP integration code (deployment secret/Zoho authorization still required)
 - [ ] V1 release
 
 ## Current focus

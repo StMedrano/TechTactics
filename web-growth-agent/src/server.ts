@@ -1,6 +1,7 @@
 import express from "express";
 import { config } from "./config.js";
 import { approveLead, setLeadStage } from "./pipeline.js";
+import { sendApprovedOutreach } from "./communications.js";
 import { buildReport } from "./report.js";
 import { LeadStore } from "./store.js";
 import type { LeadStage } from "./types.js";
@@ -29,7 +30,9 @@ function renderDashboard(leads: Awaited<ReturnType<LeadStore["all"]>>): string {
         ? `<button onclick="approve('${escapeHtml(lead.id)}')">Approve outreach</button>`
         : "";
       const contacted = lead.stage === "approved"
-        ? `<button onclick="stage('${escapeHtml(lead.id)}','contacted')">Mark contacted</button>`
+        ? (lead.contactEmail
+          ? `<button onclick="sendZoho(\'${escapeHtml(lead.id)}\')">Send via Zoho</button> <button onclick="stage(\'${escapeHtml(lead.id)}\',\'contacted\')">Mark contacted manually</button>`
+          : `<small>No contact email</small> <button onclick="stage(\'${escapeHtml(lead.id)}\',\'contacted\')">Mark contacted manually</button>`)
         : "";
       return `<tr>
         <td><strong>${escapeHtml(lead.businessName)}</strong><br><small>${escapeHtml(lead.category || "")}</small></td>
@@ -58,6 +61,7 @@ button{border:0;border-radius:8px;padding:8px 10px;background:#111827;color:whit
 </div>
 <script>
 async function approve(id){const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/approve',{method:'POST'}); if(!r.ok) alert(await r.text()); else location.reload();}
+async function sendZoho(id){if(!confirm('Send the approved outreach email through Zoho now?')) return; const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/send',{method:'POST'}); if(!r.ok) alert(await r.text()); else location.reload();}
 async function stage(id,next){const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage:next})}); if(!r.ok) alert(await r.text()); else location.reload();}
 </script></body></html>`;
 }
@@ -73,6 +77,14 @@ export async function startServer(store = new LeadStore()): Promise<void> {
   app.post("/api/leads/:id/approve", async (req, res) => {
     try {
       res.json(await approveLead(req.params.id, store));
+    } catch (error) {
+      res.status(400).send(error instanceof Error ? error.message : String(error));
+    }
+  });
+
+  app.post("/api/leads/:id/send", async (req, res) => {
+    try {
+      res.json(await sendApprovedOutreach(req.params.id, { store }));
     } catch (error) {
       res.status(400).send(error instanceof Error ? error.message : String(error));
     }
