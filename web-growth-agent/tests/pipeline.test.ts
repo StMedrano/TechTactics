@@ -22,6 +22,17 @@ function demoLead(approved = false): Lead {
     updatedAt: "2026-01-01T00:00:00.000Z",
     stage: approved ? "approved" : "demo_ready",
     approvedForOutreach: approved,
+    salesAssets: {
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      businessSummary: "Summary",
+      outreachDraft: "Reviewed draft",
+      proposalMarkdown: "# Proposal",
+      demoHeadline: "Demo",
+      demoSubheadline: "Sub",
+      demoServices: ["One", "Two", "Three"],
+      recommendedPackage: "Launch"
+    },
+    approvedOutreachGeneratedAt: approved ? "2026-01-01T00:00:00.000Z" : undefined,
     notes: []
   };
 }
@@ -32,6 +43,7 @@ describe("human approval gate", () => {
     const lead = await approveLead("lead1", store);
     expect(lead.stage).toBe("approved");
     expect(lead.approvedForOutreach).toBe(true);
+    expect(lead.approvedOutreachGeneratedAt).toBe(lead.salesAssets?.generatedAt);
   });
 
   it("does not allow contacted without approval", async () => {
