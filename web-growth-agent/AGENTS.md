@@ -19,3 +19,16 @@ Create qualified local website opportunities without fabricating problems or sen
 
 ## Agent roles
 See `agents/` for Manager, Scout, Auditor, Designer, and Sales operating contracts.
+
+## Company OS contract
+
+Before doing work, treat `company-os/` as the department's company-owned operating memory:
+
+- `SKILLS.md` — reusable written instructions and SOP expectations.
+- `MEMORY.md` — durable facts and lessons that should survive sessions/models.
+- `CONTEXT.md` — rules for assembling the current-task context.
+- `TOOLS.md` — explicit permissions and approval boundaries.
+- `TEAM.md` — worker lanes and handoffs.
+- `DECISIONS.md` — dated decisions with rationale.
+
+Do not treat chat history or model memory as the authoritative source for business rules. When a task changes a durable business rule, reusable process, permission boundary, or important rationale, update the appropriate company-os file as part of the same work.
