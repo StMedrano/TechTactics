@@ -110,7 +110,8 @@ async function main(): Promise<void> {
     const maxResults = numberValue("--max-results", 10);
     let discovered = 0;
     for (const category of categories) {
-      const leads = await scoutAndStore({ market, category, maxResults }, store);
+      const source = value("--source") as "auto" | "gemini" | "osm" | undefined;
+      const leads = await scoutAndStore({ market, category, maxResults, source }, store);
       discovered += leads.length;
       console.log(`Scouted ${leads.length} results for ${category} in ${market}.`);
     }

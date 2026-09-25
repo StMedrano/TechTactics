@@ -16,11 +16,26 @@ function baseLead(): Lead {
 }
 
 describe("calculateOpportunityScore", () => {
-  it("qualifies a no-website opportunity without inventing extra defects", () => {
-    const score = calculateOpportunityScore(baseLead(), 2026);
+  it("scores an explicitly verified no-website opportunity without inventing extra defects", () => {
+    const lead = { ...baseLead(), websiteDiscoveryStatus: "verified_absent" as const };
+    const score = calculateOpportunityScore(lead, 2026);
     expect(score.total).toBe(40);
     expect(score.items).toHaveLength(1);
     expect(score.items[0].key).toBe("no_website");
+  });
+
+  it("treats a website missing from discovery as evidence, not proof", () => {
+    const lead = { ...baseLead(), websiteDiscoveryStatus: "not_found" as const };
+    const score = calculateOpportunityScore(lead, 2026);
+    expect(score.total).toBe(35);
+    expect(score.items[0].key).toBe("website_not_found");
+    expect(score.items[0].evidence).toMatch(/Human verification/i);
+  });
+
+  it("does not award no-website points when discovery status is unknown", () => {
+    const score = calculateOpportunityScore(baseLead(), 2026);
+    expect(score.total).toBe(0);
+    expect(score.items).toHaveLength(0);
   });
 
   it("records only reachability evidence when the page could not be inspected", () => {

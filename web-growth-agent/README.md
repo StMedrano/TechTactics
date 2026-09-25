@@ -2,7 +2,7 @@
 
 A human-approved local website-sales pipeline for TechTactics.
 
-The application discovers businesses through the Google Places API, records whether a website is present, audits existing websites using deterministic checks, scores opportunities with visible evidence, generates personalized sales assets with Gemini, builds private static demo pages, and tracks leads through a simple pipeline.
+The application discovers businesses with Gemini grounded Google Search, can fall back to OpenStreetMap Overpass, records discovery sources, audits existing websites using deterministic checks, scores opportunities with visible evidence, generates personalized sales assets with Gemini, builds private static demo pages, and tracks leads through a simple pipeline.
 
 ## Safety and operating principle
 
@@ -26,7 +26,7 @@ Then open `http://localhost:4317`.
 For live scouting:
 
 ```bash
-npm run wga -- scout --market "Prairieville, LA" --category plumber --category electrician
+npm run wga -- scout --market "Prairieville, LA" --category plumber --category electrician --source auto
 npm run wga -- audit --all
 npm run wga -- qualify --min-score 35
 npm run wga -- report
