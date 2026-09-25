@@ -2,34 +2,44 @@ import MarketingLayout from '../../components/layout/MarketingLayout'
 
 const sections = [
   {
-    title: 'Service Scope',
+    title: 'Project Scope',
     body:
-      'TechTactics provides smart home, security, networking, audio/video, troubleshooting, and related support services described on this site and in customer quotes.',
+      'Website work is based on the pages, features, integrations, content responsibilities, revision limits, and deliverables listed in the approved proposal or statement of work.',
   },
   {
-    title: 'Scheduling And Access',
+    title: 'Client Content And Access',
     body:
-      'Customers are responsible for providing accurate site details, safe access to the property, and any required owner or business approval before installation or service begins.',
+      'Clients are responsible for providing requested logos, copy, images, account access, domain or DNS access, and approvals needed to complete the project. Delays in client materials or access may move the launch date.',
   },
   {
-    title: 'Equipment And Compatibility',
+    title: 'Domains, Hosting, And Third-Party Services',
     body:
-      'Customer-supplied devices and existing wiring may affect scope, timing, and compatibility. Additional labor or replacement hardware may be required if field conditions differ from the original request.',
+      'Domains, hosting, email, payment processors, booking systems, analytics tools, plugins, and other third-party services may have separate fees and terms. TechTactics will identify these items when they are part of the project.',
   },
   {
-    title: 'Invoices And Recurring Services',
+    title: 'Approvals And Revisions',
     body:
-      'One-time work may be billed after approval or completion. Ongoing support, monitoring, or maintenance plans may recur monthly or by service term as listed in the portal or invoice.',
+      'Milestones may require client approval before work moves forward. Revisions outside the agreed scope may require a change request, additional fee, or revised delivery schedule.',
   },
   {
-    title: 'Cancellations And Changes',
+    title: 'Invoices And Payment',
     body:
-      'Project dates, requested equipment, and service scope may change based on availability, site readiness, or customer direction. Late cancellations may result in rescheduling or trip charges.',
+      'Deposits, milestone payments, final balances, subscriptions, maintenance, or hosting charges will be listed in the proposal or invoice. Final files, launch, or ownership transfer may depend on payment of amounts due.',
   },
   {
-    title: 'Warranty And Support',
+    title: 'Launch, Maintenance, And Support',
     body:
-      'TechTactics will stand behind completed workmanship within the service scope provided. Manufacturer warranties, software availability, and third-party cloud services remain subject to their own terms.',
+      'After launch, maintenance, content updates, monitoring, backups, security work, SEO work, and ongoing support are included only when listed in the selected package or recurring service agreement.',
+  },
+  {
+    title: 'Client Responsibilities',
+    body:
+      'Clients are responsible for the accuracy and legal right to use content they provide, including text, images, trademarks, product information, privacy disclosures, and claims made on the website.',
+  },
+  {
+    title: 'Future TechTactics Services',
+    body:
+      'The current public offering focuses on website design, development, and related digital services. Other TechTactics service lines may be offered separately under their own scope and terms in the future.',
   },
 ]
 
@@ -40,8 +50,8 @@ export default function TermsPage() {
         <div className="container stack-lg">
           <div className="section-head">
             <div>
-              <h2>Terms of Service</h2>
-              <p>Plain-language service terms for TechTactics portal, installs, support, and recurring service plans.</p>
+              <h2>Website Services Terms</h2>
+              <p>Plain-language project terms for TechTactics website design, development, integrations, and support.</p>
             </div>
           </div>
 
@@ -57,9 +67,9 @@ export default function TermsPage() {
           <div className="info-card">
             <h3>Important Note</h3>
             <p>
-              This page is a practical draft for your hosted site and portal. For a final legal review, especially if
-              you plan to offer monitoring, subscriptions, commercial installs, or financing, it should be reviewed by
-              counsel in your state.
+              This page is a practical operating draft and is not legal advice. Before relying on it as final customer
+              terms, TechTactics should have the terms reviewed for the jurisdictions, payment model, subscriptions, data
+              handling, and services it actually offers.
             </p>
           </div>
         </div>
