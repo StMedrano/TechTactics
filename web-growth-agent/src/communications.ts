@@ -164,3 +164,54 @@ export async function sendAgentEmail(
     body
   });
 }
+
+
+export async function reconcileOutreachSend(
+  id: string,
+  result: "sent" | "not-sent",
+  store = new LeadStore()
+): Promise<Lead> {
+  return store.update(id, (current) => {
+    const state = current.outreachSend;
+    if (!state) throw new Error("No outreach send attempt exists for this lead.");
+    if (state.status === "sent") return current;
+    if (!["pending", "needs_review"].includes(state.status)) {
+      throw new Error("Outreach send state cannot be reconciled from status " + state.status + ".");
+    }
+
+    if (result === "not-sent") {
+      return {
+        ...current,
+        outreachSend: undefined,
+        notes: [...current.notes, "Human reconciliation confirmed the prior Zoho outreach attempt was not sent; retry is allowed."]
+      };
+    }
+
+    const sentAt = nowIso();
+    const alreadyRecorded = current.communications?.some((entry) => entry.kind === "customer_outreach");
+    return {
+      ...current,
+      stage: "contacted",
+      outreachSend: {
+        ...state,
+        status: "sent",
+        sentAt
+      },
+      communications: alreadyRecorded
+        ? current.communications
+        : [
+            ...(current.communications || []),
+            {
+              at: sentAt,
+              channel: "zoho_email",
+              kind: "customer_outreach",
+              direction: "outbound",
+              to: state.to,
+              subject: state.subject,
+              fromAgent: "sales"
+            }
+          ],
+      notes: [...current.notes, "Human reconciliation confirmed the prior Zoho outreach attempt was sent."]
+    };
+  });
+}
