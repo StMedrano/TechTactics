@@ -99,8 +99,8 @@ export async function startServer(store = new LeadStore()): Promise<void> {
   });
 
   await new Promise<void>((resolve) => {
-    app.listen(config.port, "127.0.0.1", () => {
-      console.log(`TechTactics Web Growth Agent dashboard: http://127.0.0.1:${config.port}`);
+    app.listen(config.port, config.host, () => {
+      console.log(`TechTactics Web Growth Agent dashboard: http://${config.host}:${config.port}`);
       resolve();
     });
   });
