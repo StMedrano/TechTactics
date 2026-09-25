@@ -213,7 +213,7 @@ area["name"="${escapeOverpass(city)}"]["boundary"="administrative"]->.searchArea
 (
   ${union}
 );
-out center tags;`;
+out center;`;
 }
 
 export async function searchOverpass(options: ScoutOptions): Promise<Candidate[]> {
