@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { auditAll, approveLead, generateForLead, qualifyAll, setLeadStage } from "./pipeline.js";
-import { sendAgentEmail, sendApprovedOutreach, setLeadContactEmail } from "./communications.js";
+import { reconcileOutreachSend, sendAgentEmail, sendApprovedOutreach, setLeadContactEmail } from "./communications.js";
 import { readZohoMail, replyZohoEmail, zohoMailStatus } from "./zoho.js";
 import { readZohoBooks, zohoBooksStatus } from "./books.js";
 import { buildReport } from "./report.js";
@@ -73,6 +73,9 @@ Commands:
 
   send --lead <id> [--subject "<subject>"]
       Send the reviewed outreach draft through Zoho. Requires the lead to already be approved.
+
+  reconcile-send --lead <id> --result sent|not-sent
+      Resolve an interrupted/ambiguous Zoho send after checking the Zoho Sent folder.
 
   agent-mail --from sales --to manager --subject "<subject>" --body "<text>"
       Send one internal role-to-role message to a configured agent mailbox.
@@ -189,6 +192,17 @@ async function main(): Promise<void> {
     if (!id) throw new Error("--lead is required.");
     const lead = await sendApprovedOutreach(id, { subject: value("--subject"), store });
     console.log("Zoho outreach sent to " + lead.contactEmail + "; lead moved to contacted.");
+    return;
+  }
+
+  if (command === "reconcile-send") {
+    const id = value("--lead");
+    const result = value("--result");
+    if (!id || (result !== "sent" && result !== "not-sent")) {
+      throw new Error("--lead and --result sent|not-sent are required.");
+    }
+    const lead = await reconcileOutreachSend(id, result, store);
+    console.log("Reconciled outreach for " + lead.businessName + ": " + result + ".");
     return;
   }
 
