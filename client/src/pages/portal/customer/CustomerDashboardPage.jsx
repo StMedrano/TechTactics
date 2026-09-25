@@ -151,11 +151,11 @@ export default function CustomerDashboardPage() {
     const form = quoteForms[request.id] || {}
 
     if (!form.scheduledDate) {
-      setError('Choose an install date after paying the 50% deposit.')
+      setError('Choose a project start date after paying the 50% deposit.')
       return
     }
 
-    if (!window.confirm('Check the deposit payment and schedule this install date?')) {
+    if (!window.confirm('Check the deposit payment and schedule this project start date?')) {
       return
     }
 
@@ -167,10 +167,10 @@ export default function CustomerDashboardPage() {
       await appService.scheduleTicketInstall(request.id, {
         scheduledDate: form.scheduledDate,
       })
-      setMessage('Deposit confirmed. Your install has been scheduled and assigned.')
+      setMessage('Deposit confirmed. Your project start has been scheduled and assigned.')
       await loadDashboard()
     } catch (err) {
-      setError(err.message || 'Unable to schedule this install.')
+      setError(err.message || 'Unable to schedule this project start.')
     } finally {
       setRespondingQuoteId('')
     }
@@ -181,13 +181,13 @@ export default function CustomerDashboardPage() {
       {error && <Card title="Load Error"><p>{error}</p></Card>}
       {message && <Card title="Portal Update"><p>{message}</p></Card>}
       <div className="grid grid-3">
-        <StatCard label="Current Services" value={data.services.length} helper="Active service plans and installs" />
-        <StatCard label="Open Requests" value={data.requests.length} helper="Install, repair, and support tickets" />
+        <StatCard label="Current Website Services" value={data.services.length} helper="Active website projects and support plans" />
+        <StatCard label="Open Requests" value={data.requests.length} helper="Website changes, content, and support requests" />
         <StatCard label="Unpaid Invoices" value={money(totalDue)} helper="Pay through Zoho Books SecurePay / Square" />
       </div>
 
       <div className="grid grid-3 portal-grid-gap">
-        <Card title="Current Services">
+        <Card title="Current Website Services">
           <ul className="clean-list">
             {data.services.map((service) => (
               <li key={service.id}>{service.serviceName} <span>{service.category}</span></li>
@@ -264,7 +264,7 @@ export default function CustomerDashboardPage() {
 
       <Card
         title="Deposit Required Before Scheduling"
-        subtitle="Pay the 50% deposit from the Payments page, then choose your install date here."
+        subtitle="Pay the 50% deposit from the Payments page, then choose your project start date here."
       >
         {depositPendingRequests.length ? (
           <div className="stack gap-md">
@@ -281,7 +281,7 @@ export default function CustomerDashboardPage() {
                     <div className="sub-cell">50% deposit required: <strong>{money(Number(request.quoteAmount || 0) * 0.5)}</strong></div>
                   </div>
                   <label>
-                    Requested install date
+                    Requested project start date
                     <input
                       type="date"
                       min={getTodayDate()}
@@ -313,7 +313,7 @@ export default function CustomerDashboardPage() {
 
       <Card
         title="Review Requests"
-        subtitle="When a job is completed, your feedback can be submitted here and featured on the website."
+        subtitle="When a website project is completed, your feedback can be submitted here and featured on the website."
       >
         {data.reviewRequests.length ? (
           <div className="stack gap-md">
@@ -359,13 +359,13 @@ export default function CustomerDashboardPage() {
             })}
           </div>
         ) : (
-          <p>Completed jobs that need your feedback will appear here automatically.</p>
+          <p>Completed website projects that need your feedback will appear here automatically.</p>
         )}
       </Card>
 
       <Card
-        title="Service Activity"
-        subtitle="Track approvals, dispatches, technician updates, and completion notes for your requests."
+        title="Project Activity"
+        subtitle="Track approvals, assignments, project updates, and completion notes for your requests."
       >
         <div className="table-wrap">
           <table>
@@ -373,7 +373,7 @@ export default function CustomerDashboardPage() {
               <tr>
                 <th>Request</th>
                 <th>Status</th>
-                <th>Technician</th>
+                <th>Assigned To</th>
                 <th>Updated</th>
                 <th>Latest Note</th>
               </tr>
@@ -394,7 +394,7 @@ export default function CustomerDashboardPage() {
               })}
               {!data.requests.length && (
                 <tr>
-                  <td colSpan="5">Your service activity will appear here after your first request.</td>
+                  <td colSpan="5">Your website project activity will appear here after your first request.</td>
                 </tr>
               )}
             </tbody>

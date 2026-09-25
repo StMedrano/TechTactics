@@ -1,5 +1,13 @@
 # TechTactics
 
+## Current business focus: TechTactics Websites
+
+TechTactics is currently being repositioned as a website-building company for local businesses. The public website should sell website audits, new websites, redesigns, lead-generation/booking flows, and business integrations.
+
+The broader TechTactics vision is intentionally preserved for a later phase: MSP/IT services, smart-home services, and business technology installations can return as separate service divisions without rebuilding the platform from scratch.
+
+See [WEBSITE_BUSINESS_PIVOT.md](WEBSITE_BUSINESS_PIVOT.md) for the current product, sales-agent, portal, and future-division architecture.
+
 Customer, employee, and admin portal with Zoho Catalyst services for billing,
 dispatch, time tracking, notifications, phone intake, and business automation.
 

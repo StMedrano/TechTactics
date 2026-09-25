@@ -10,7 +10,7 @@ import {
 
 const initialForm = {
   catalogType: 'services',
-  offerKey: 'smart-home-installations',
+  offerKey: 'new-website-build',
   requestedItem: '',
   address: '',
   description: '',
@@ -59,32 +59,32 @@ export default function CustomerRequestHelpPage() {
     try {
       const payload = buildServiceRequestPayload(form, selectedEntry)
       await appService.createServiceRequest(payload)
-      setMessage('Service request submitted for admin quote review and approval.')
+      setMessage('Website request submitted for project review and quote approval.')
       setForm({
         ...initialForm,
         catalogType: form.catalogType,
         offerKey: getCatalogEntries(form.catalogType)[0]?.key || initialForm.offerKey,
       })
     } catch (err) {
-      setError(err.message || 'Unable to submit the service request.')
+      setError(err.message || 'Unable to submit the website request.')
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <PortalLayout title="Request Assistance">
+    <PortalLayout title="Request Website Change">
       <div className="grid grid-2 portal-grid-gap">
         <Card
-          title="New Service Request"
-          subtitle="Request a service or package and send Zoho-ready details through your portal ticket for admin quote review."
+          title="New Website Request"
+          subtitle="Request a website project, update, package, or integration and send the details for review and quoting."
         >
           <form className="form-grid" onSubmit={onSubmit}>
             <label>
               Request Type
               <select value={form.catalogType} onChange={(event) => onCatalogTypeChange(event.target.value)}>
-                <option value="services">Service</option>
-                <option value="packages">Service Package</option>
+                <option value="services">Website Service</option>
+                <option value="packages">Website Package</option>
               </select>
             </label>
 
@@ -102,7 +102,7 @@ export default function CustomerRequestHelpPage() {
             <label className="full-width">
               Specific Need
               <select value={form.requestedItem} onChange={(event) => update('requestedItem', event.target.value)}>
-                <option value="">Full service / not sure yet</option>
+                <option value="">Full project / not sure yet</option>
                 {selectedEntry.includes.map((item) => (
                   <option key={item} value={item}>
                     {item}
@@ -112,7 +112,7 @@ export default function CustomerRequestHelpPage() {
             </label>
 
             <label className="full-width">
-              Service Address
+              Business Location / Primary Service Area
               <input value={form.address} onChange={(event) => update('address', event.target.value)} />
             </label>
 
@@ -122,7 +122,7 @@ export default function CustomerRequestHelpPage() {
                 rows="5"
                 value={form.description}
                 onChange={(event) => update('description', event.target.value)}
-                placeholder="Tell us about the install, issue, or outcome you want."
+                placeholder="Tell us about the website, update, integration, issue, or business outcome you want."
               />
             </label>
 
@@ -142,7 +142,7 @@ export default function CustomerRequestHelpPage() {
           subtitle={`${selectedEntry.requestType} - ${selectedEntry.summary}`}
         >
           <div className="stack gap-sm">
-            <strong>Included services</strong>
+            <strong>Included project items</strong>
             <ul className="clean-list bullets request-includes">
               {selectedEntry.includes.map((item) => (
                 <li key={item}>{item}</li>
@@ -150,7 +150,7 @@ export default function CustomerRequestHelpPage() {
             </ul>
 
             <div className="request-preview">
-              <strong>Zoho Books request label</strong>
+              <strong>Project request label</strong>
               <div className="sub-cell">
                 {form.requestedItem ? `${selectedEntry.title} - ${form.requestedItem}` : selectedEntry.title}
               </div>

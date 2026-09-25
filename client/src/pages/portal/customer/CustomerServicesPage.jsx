@@ -25,8 +25,8 @@ function buildPurchasedItems(requests, invoices) {
       const linkedInvoice = invoiceByTicketId.get(String(request.id))
       return {
         id: `request-${request.id}`,
-        name: request.title || request.category || request.type || 'Service request',
-        category: request.category || request.type || 'Service',
+        name: request.title || request.category || request.type || 'Website request',
+        category: request.category || request.type || 'Website',
         status: formatStatus(linkedInvoice?.status || request.status || 'requested'),
         purchasedAt: request.updatedAt || request.createdAt || '',
         amount: Number(linkedInvoice?.amount || 0),
@@ -65,7 +65,7 @@ export default function CustomerServicesPage() {
         })
       })
       .catch((err) => {
-        setError(err.message || 'Unable to load your services.')
+        setError(err.message || 'Unable to load your website services.')
       })
   }, [])
 
@@ -75,7 +75,7 @@ export default function CustomerServicesPage() {
   )
 
   return (
-    <PortalLayout title="My Services">
+    <PortalLayout title="My Website">
       {error && (
         <Card title="Load Error">
           <p>{error}</p>
@@ -83,12 +83,12 @@ export default function CustomerServicesPage() {
       )}
 
       <div className="grid grid-2 portal-grid-gap">
-        <Card title="Recurring Services" subtitle="Monthly and ongoing plans tied to your account.">
+        <Card title="Ongoing Website Services" subtitle="Maintenance, support, hosting, and other recurring plans tied to your account.">
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Service</th>
+                  <th>Plan / Service</th>
                   <th>Category</th>
                   <th>Status</th>
                   <th>Started</th>
@@ -107,7 +107,7 @@ export default function CustomerServicesPage() {
                 ))}
                 {!data.services.length && (
                   <tr>
-                    <td colSpan="5">No recurring services are linked to this account yet.</td>
+                    <td colSpan="5">No ongoing website services are linked to this account yet.</td>
                   </tr>
                 )}
               </tbody>
@@ -115,7 +115,7 @@ export default function CustomerServicesPage() {
           </div>
         </Card>
 
-        <Card title="Purchased Items" subtitle="Approved requests, installs, and one-time purchases.">
+        <Card title="Website Projects & Purchases" subtitle="Approved website projects, one-time work, and purchases.">
           <div className="table-wrap">
             <table>
               <thead>

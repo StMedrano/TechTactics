@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "TechTactics Portal",
+  "name": "TechTactics Websites",
   "short_name": "TechTactics",
-  "description": "Customer, employee, and admin portal for TechTactics smart home services.",
+  "description": "Modern website design, development, lead capture, and business integrations from TechTactics.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

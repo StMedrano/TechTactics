@@ -30,7 +30,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-4">
         <StatCard label="Users" value={data.users.length} helper="Customer, employee, and admin accounts" />
         <StatCard label="Employees" value={data.employees.length} helper="Manage staffing and pay" />
-        <StatCard label="Service Tickets" value={data.requests.length} helper="Track open requests" />
+        <StatCard label="Website Requests" value={data.requests.length} helper="Track open website projects and change requests" />
         <StatCard label="Invoices" value={data.invoices.length} helper="Zoho Books billing flow" />
       </div>
 

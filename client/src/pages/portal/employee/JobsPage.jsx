@@ -7,9 +7,9 @@ import { money } from '../../../utils/formatters'
 
 const DISPATCH_STATUSES = [
   { value: 'open', label: 'Open' },
-  { value: 'dispatched', label: 'Dispatched' },
+  { value: 'dispatched', label: 'Assigned' },
   { value: 'quoted', label: 'Quoted' },
-  { value: 'awaiting_equipment', label: 'Awaiting Equipment' },
+  { value: 'awaiting_equipment', label: 'Waiting on Client / Assets' },
   { value: 'pending', label: 'Pending' },
   { value: 'completed', label: 'Completed' },
 ]
@@ -61,7 +61,7 @@ function getInvoiceDraft(current, job) {
     selectedBooksItemId: current[job.id]?.selectedBooksItemId ?? '',
     invoiceItems: Array.isArray(current[job.id]?.invoiceItems) ? current[job.id].invoiceItems : [],
     equipmentItemId: current[job.id]?.equipmentItemId ?? '',
-    equipmentName: current[job.id]?.equipmentName ?? 'Equipment',
+    equipmentName: current[job.id]?.equipmentName ?? 'Project Item',
     equipmentAmount: current[job.id]?.equipmentAmount ?? '',
     laborHours: current[job.id]?.laborHours ?? '',
     laborRate: current[job.id]?.laborRate ?? '',
@@ -110,7 +110,7 @@ export default function JobsPage() {
       })
       setError('')
     } catch (err) {
-      setError(err.message || 'Unable to load assigned jobs.')
+      setError(err.message || 'Unable to load assigned website projects.')
     }
   }
 
@@ -196,7 +196,7 @@ export default function JobsPage() {
     const note = String(draft.note || '').trim()
 
     if (!note) {
-      setError('Add a dispatch note before saving a status update.')
+      setError('Add a project note before saving a status update.')
       return
     }
 
@@ -209,7 +209,7 @@ export default function JobsPage() {
         status: draft.status || job.status,
         note,
       })
-      setMessage(`Dispatch updated for ticket #${job.id}.`)
+      setMessage(`Project updated for request #${job.id}.`)
       setDrafts((current) => ({
         ...current,
         [job.id]: {
@@ -219,7 +219,7 @@ export default function JobsPage() {
       }))
       await loadJobs()
     } catch (err) {
-      setError(err.message || 'Unable to update this dispatch.')
+      setError(err.message || 'Unable to update this project.')
     } finally {
       setSavingTicketId('')
     }
@@ -235,8 +235,8 @@ export default function JobsPage() {
     if (equipmentAmount > 0) {
       items.push({
         itemId: draft.equipmentItemId,
-        name: draft.equipmentName || 'Equipment',
-        description: `Equipment for ticket #${job.id}`,
+        name: draft.equipmentName || 'Project Item',
+        description: `Project item for website request #${job.id}`,
         quantity: 1,
         rate: equipmentAmount,
       })
@@ -244,8 +244,8 @@ export default function JobsPage() {
 
     if (laborHours > 0 && laborRate > 0) {
       items.push({
-        name: 'Labor',
-        description: `Labor for ticket #${job.id}`,
+        name: 'Project Services',
+        description: `Project services for website request #${job.id}`,
         quantity: laborHours,
         rate: laborRate,
       })
@@ -253,7 +253,7 @@ export default function JobsPage() {
 
     const amount = getLineItemTotal(items) || Number(job.quoteAmount || 0)
     if (amount <= 0) {
-      setError('Add equipment/labor pricing or make sure the quote amount is available before creating an invoice.')
+      setError('Add project item/service pricing or make sure the quote amount is available before creating an invoice.')
       return
     }
 
@@ -281,7 +281,7 @@ export default function JobsPage() {
           selectedBooksItemId: '',
           invoiceItems: [],
           equipmentItemId: '',
-          equipmentName: 'Equipment',
+          equipmentName: 'Project Item',
           equipmentAmount: '',
           laborHours: '',
           laborRate: '',
@@ -321,7 +321,7 @@ export default function JobsPage() {
           rows="3"
           value={draft.note || ''}
           onChange={(event) => updateDraft(job.id, 'note', event.target.value)}
-          placeholder="Required dispatch note"
+          placeholder="Required project note"
         />
         <button
           className="btn btn-secondary"
@@ -389,7 +389,7 @@ export default function JobsPage() {
         <input
           value={invoiceDraft.equipmentName}
           onChange={(event) => updateInvoiceDraft(job.id, 'equipmentName', event.target.value)}
-          placeholder="Equipment label"
+          placeholder="Project item label"
         />
         <input
           type="number"
@@ -397,7 +397,7 @@ export default function JobsPage() {
           step="0.01"
           value={invoiceDraft.equipmentAmount}
           onChange={(event) => updateInvoiceDraft(job.id, 'equipmentAmount', event.target.value)}
-          placeholder="Equipment amount"
+          placeholder="Project item amount"
         />
         <div className="grid grid-2">
           <input
@@ -406,7 +406,7 @@ export default function JobsPage() {
             step="0.25"
             value={invoiceDraft.laborHours}
             onChange={(event) => updateInvoiceDraft(job.id, 'laborHours', event.target.value)}
-            placeholder="Labor hours"
+            placeholder="Service hours"
           />
           <input
             type="number"
@@ -414,7 +414,7 @@ export default function JobsPage() {
             step="0.01"
             value={invoiceDraft.laborRate}
             onChange={(event) => updateInvoiceDraft(job.id, 'laborRate', event.target.value)}
-            placeholder="Hourly rate"
+            placeholder="Service rate"
           />
         </div>
         <textarea
@@ -436,25 +436,25 @@ export default function JobsPage() {
   }
 
   return (
-    <PortalLayout title="My Jobs">
+    <PortalLayout title="My Projects">
       {error && (
-        <Card title="Dispatch Error">
+        <Card title="Project Update Error">
           <p>{error}</p>
         </Card>
       )}
 
       {message && (
-        <Card title="Dispatch Updated">
+        <Card title="Project Updated">
           <p>{message}</p>
         </Card>
       )}
 
       <Card
-        title="Dispatch Queue"
+        title="Project Queue"
         subtitle={
           profile.role === 'employee'
-            ? 'Clock in before moving assigned jobs beyond Open, and leave a note every time you change status.'
-            : 'Admins can update assigned dispatches, review notes, and help move jobs through the workflow.'
+            ? 'Clock in before moving assigned projects beyond Open, and leave a note every time you change status.'
+            : 'Admins can update assigned projects, review notes, and help move work through the workflow.'
         }
       >
         <div className="table-wrap dispatch-table-wrap">
@@ -463,12 +463,12 @@ export default function JobsPage() {
               <tr>
                 <th>ID</th>
                 <th>Customer</th>
-                <th>Service</th>
+                <th>Project / Work</th>
                 <th>Status</th>
-                <th>Address</th>
-                <th>Quote / Schedule</th>
+                <th>Business / Service Area</th>
+                <th>Quote / Start</th>
                 <th>Latest Note</th>
-                <th className="dispatch-action-cell">Dispatch Update</th>
+                <th className="dispatch-action-cell">Project Update</th>
                 <th className="invoice-action-cell">Invoice</th>
               </tr>
             </thead>
@@ -484,7 +484,7 @@ export default function JobsPage() {
                   <td>{formatTicketStatus(job.status)}</td>
                   <td>{job.address || '-'}</td>
                   <td>
-                    <div>Install: <strong>{formatDate(job.scheduledDate)}</strong></div>
+                    <div>Start: <strong>{formatDate(job.scheduledDate)}</strong></div>
                     <div>Quote: <strong>{money(job.quoteAmount)}</strong></div>
                     <p className="sub-cell">{job.quoteText || 'No quote details attached.'}</p>
                   </td>
@@ -502,7 +502,7 @@ export default function JobsPage() {
               ))}
               {!jobs.length && (
                 <tr>
-                  <td colSpan="9">Assigned jobs will appear here once dispatches are approved and routed to you.</td>
+                  <td colSpan="9">Assigned website projects will appear here once they are approved and assigned to you.</td>
                 </tr>
               )}
             </tbody>
@@ -521,11 +521,11 @@ export default function JobsPage() {
 
               <dl className="mobile-detail-grid">
                 <div>
-                  <dt>Service</dt>
+                  <dt>Project</dt>
                   <dd>{job.type} / {job.category}</dd>
                 </div>
                 <div>
-                  <dt>Install</dt>
+                  <dt>Start</dt>
                   <dd>{formatDate(job.scheduledDate)}</dd>
                 </div>
                 <div>
@@ -540,11 +540,11 @@ export default function JobsPage() {
 
               <div className="mobile-note-block">
                 <strong>Latest Note</strong>
-                <p>{job.note || 'No dispatch note yet.'}</p>
+                <p>{job.note || 'No project note yet.'}</p>
               </div>
 
               <div className="mobile-card-section">
-                <h5>Dispatch Update</h5>
+                <h5>Project Update</h5>
                 {renderDispatchControls(job)}
               </div>
 
@@ -556,7 +556,7 @@ export default function JobsPage() {
           ))}
 
           {!jobs.length && (
-            <p className="sub-cell">Assigned jobs will appear here once dispatches are approved and routed to you.</p>
+            <p className="sub-cell">Assigned website projects will appear here once they are approved and assigned to you.</p>
           )}
         </div>
       </Card>

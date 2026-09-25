@@ -91,7 +91,7 @@ export default function TicketsPage() {
       setTickets(Array.isArray(payload) ? payload : [])
       setError('')
     } catch (err) {
-      setError(err.message || 'Unable to load tickets.')
+      setError(err.message || 'Unable to load website requests.')
     }
   }
 
@@ -184,7 +184,7 @@ export default function TicketsPage() {
       return
     }
 
-    if (!window.confirm('Send this quote to the customer for approval and install-date selection?')) {
+    if (!window.confirm('Send this quote to the customer for approval and project start-date selection?')) {
       return
     }
 
@@ -233,7 +233,7 @@ export default function TicketsPage() {
   async function handleComplete(ticket) {
     const completionNote = window.prompt(
       'Add a completion note for the customer before closing this ticket.',
-      'Job completed successfully.'
+      'Website project completed successfully.'
     )
 
     if (completionNote === null) {
@@ -241,11 +241,11 @@ export default function TicketsPage() {
     }
 
     if (!String(completionNote).trim()) {
-      setError('Add a completion note before marking a ticket completed.')
+      setError('Add a completion note before marking a website project completed.')
       return
     }
 
-    if (!window.confirm('Mark this job completed and send a review request to the customer?')) {
+    if (!window.confirm('Mark this website project completed and send a review request to the customer?')) {
       return
     }
 
@@ -257,14 +257,14 @@ export default function TicketsPage() {
       })
       await loadTickets()
     } catch (err) {
-      setError(err.message || 'Unable to mark the job completed.')
+      setError(err.message || 'Unable to mark the website project completed.')
     } finally {
       setSavingTicketId('')
     }
   }
 
   return (
-    <PortalLayout title="Service Tickets">
+    <PortalLayout title="Website Requests">
       {error && (
         <Card title="Load Error">
           <p>{error}</p>
@@ -272,8 +272,8 @@ export default function TicketsPage() {
       )}
 
       <Card
-        title="Install Calendar"
-        subtitle="Only one install can be scheduled per day. Customer-approved quotes appear here after the customer chooses a date."
+        title="Project Start Calendar"
+        subtitle="Customer-approved website projects appear here after the customer chooses a project start date."
       >
         <div className="calendar-strip">
           {tickets
@@ -287,19 +287,19 @@ export default function TicketsPage() {
               </div>
             ))}
           {!tickets.some((ticket) => ticket.scheduledDate) && (
-            <p>No customer-approved installs have been scheduled yet.</p>
+            <p>No customer-approved website project starts have been scheduled yet.</p>
           )}
         </div>
       </Card>
 
-      <Card subtitle="Customer requests wait here for admin quote creation, customer approval, install date selection, assignment, completion, and review follow-up.">
+      <Card subtitle="Website requests wait here for quote creation, customer approval, project start selection, assignment, completion, and review follow-up.">
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Customer</th>
-                <th>Requested Service</th>
+                <th>Requested Work</th>
                 <th>Category</th>
                 <th>Status</th>
                 <th>Assigned</th>
@@ -334,7 +334,7 @@ export default function TicketsPage() {
                         <div className="sub-cell">Quote: {money(ticket.quoteAmount)}</div>
                       )}
                       {ticket.scheduledDate && (
-                        <div className="sub-cell">Install: {formatDate(ticket.scheduledDate)}</div>
+                        <div className="sub-cell">Start: {formatDate(ticket.scheduledDate)}</div>
                       )}
                     </td>
                     <td>
@@ -431,7 +431,7 @@ export default function TicketsPage() {
                         <div className="stack gap-sm">
                           <strong>Waiting for deposit</strong>
                           <div className="sub-cell">50% deposit: {money(Number(ticket.quoteAmount || 0) * 0.5)}</div>
-                          <p>Customer must pay the deposit before choosing an install date.</p>
+                          <p>Customer must pay the deposit before choosing a project start date.</p>
                         </div>
                       ) : canMarkCompleted(normalizedStatus) ? (
                         <button
@@ -453,7 +453,7 @@ export default function TicketsPage() {
               })}
               {!tickets.length && (
                 <tr>
-                  <td colSpan="8">No service requests found.</td>
+                  <td colSpan="8">No website requests found.</td>
                 </tr>
               )}
             </tbody>
