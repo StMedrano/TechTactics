@@ -6,6 +6,8 @@ import { sendZohoEmail, type ZohoSendInput, type ZohoSendResult } from "./zoho.j
 
 export type EmailSender = (input: ZohoSendInput) => Promise<ZohoSendResult>;
 
+const outreachInFlight = new Set<string>();
+
 function validateEmail(value: string): string {
   const email = value.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("Invalid email address: " + value);
@@ -19,7 +21,7 @@ export async function setLeadContactEmail(
 ): Promise<Lead> {
   const validated = validateEmail(email);
   const lead = await store.get(id);
-  if (!lead) throw new Error("Lead not found: " + id);
+    if (!lead) throw new Error("Lead not found: " + id);
   return store.update(id, (current) => ({ ...current, contactEmail: validated }));
 }
 
@@ -31,33 +33,36 @@ export async function sendApprovedOutreach(
     sender?: EmailSender;
   } = {}
 ): Promise<Lead> {
-  const store = options.store || new LeadStore();
-  const sender = options.sender || sendZohoEmail;
-  const lead = await store.get(id);
-  if (!lead) throw new Error("Lead not found: " + id);
-  if (lead.stage !== "approved" || !lead.approvedForOutreach) {
+  if (outreachInFlight.has(id)) throw new Error("An outreach send is already in progress for this lead.");
+  outreachInFlight.add(id);
+  try {
+    const store = options.store || new LeadStore();
+    const sender = options.sender || sendZohoEmail;
+    const lead = await store.get(id);
+    if (!lead) throw new Error("Lead not found: " + id);
+    if (lead.stage !== "approved" || !lead.approvedForOutreach) {
     throw new Error("Lead must have explicit human approval before Zoho outreach can be sent.");
   }
-  if (!lead.salesAssets?.outreachDraft) {
+    if (!lead.salesAssets?.outreachDraft) {
     throw new Error("Generate and review sales assets before sending outreach.");
   }
-  if (!lead.contactEmail) {
+    if (!lead.contactEmail) {
     throw new Error("Lead does not have a contact email. Add one explicitly or audit a site with a mailto link.");
   }
-  if (lead.communications?.some((entry) => entry.kind === "customer_outreach")) {
+    if (lead.communications?.some((entry) => entry.kind === "customer_outreach")) {
     throw new Error("Customer outreach is already recorded for this lead; refusing a duplicate initial send.");
   }
 
-  const subject = options.subject?.trim() || "Website concept for " + lead.businessName + " — TechTactics";
-  const result = await sender({
-    to: lead.contactEmail,
-    subject,
-    body: lead.salesAssets.outreachDraft
-  });
+    const subject = options.subject?.trim() || "Website concept for " + lead.businessName + " — TechTactics";
+    const result = await sender({
+      to: lead.contactEmail,
+      subject,
+      body: lead.salesAssets.outreachDraft
+    });
 
-  return store.update(id, (current) => ({
-    ...current,
-    stage: "contacted",
+    return store.update(id, (current) => ({
+      ...current,
+      stage: "contacted",
     communications: [
       ...(current.communications || []),
       {
@@ -71,8 +76,11 @@ export async function sendApprovedOutreach(
         providerCallId: result.providerCallId
       }
     ],
-    notes: [...current.notes, "Approved outreach sent through Zoho Mail MCP."]
-  }));
+      notes: [...current.notes, "Approved outreach sent through Zoho Mail MCP."]
+    }));
+  } finally {
+    outreachInFlight.delete(id);
+  }
 }
 
 export async function sendAgentEmail(

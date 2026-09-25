@@ -31,8 +31,8 @@ function renderDashboard(leads: Awaited<ReturnType<LeadStore["all"]>>): string {
         : "";
       const contacted = lead.stage === "approved"
         ? (lead.contactEmail
-          ? `<button onclick="sendZoho(\'${escapeHtml(lead.id)}\')">Send via Zoho</button> <button onclick="stage(\'${escapeHtml(lead.id)}\',\'contacted\')">Mark contacted manually</button>`
-          : `<small>No contact email</small> <button onclick="stage(\'${escapeHtml(lead.id)}\',\'contacted\')">Mark contacted manually</button>`)
+          ? `<button onclick="sendZoho('${escapeHtml(lead.id)}')">Send via Zoho</button> <button onclick="stage('${escapeHtml(lead.id)}','contacted')">Mark contacted manually</button>`
+          : `<small>No contact email</small> <button onclick="stage('${escapeHtml(lead.id)}','contacted')">Mark contacted manually</button>`)
         : "";
       return `<tr>
         <td><strong>${escapeHtml(lead.businessName)}</strong><br><small>${escapeHtml(lead.category || "")}</small></td>

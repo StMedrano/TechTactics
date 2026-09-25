@@ -18,21 +18,29 @@ export function calculateOpportunityScore(lead: Lead, currentYear = new Date().g
 
   if (!audit.reachable) {
     add(items, "unreachable", "Website was not reachable", 30, audit.notes.join(" ") || "The audit request did not succeed.");
+    return { total: 30, items, calculatedAt: nowIso() };
   }
+
   if (!audit.hasViewportMeta) {
     add(items, "mobile", "No viewport meta tag", 20, "Returned HTML did not include a viewport meta tag.");
   }
   if ((audit.responseMs ?? 0) > 3000) {
-    add(items, "slow_response", "Slow initial document response", 15, `Audit runner observed ${audit.responseMs} ms.`);
+    add(items, "slow_response", "Slow initial document response", 15, "Audit runner observed " + audit.responseMs + " ms.");
   }
   if (!audit.hasPrimaryCta) {
     add(items, "cta", "No common primary call-to-action detected", 15, "No common quote, booking, scheduling, contact, or get-started CTA was detected.");
   }
   if (!audit.https) {
-    add(items, "https", "Website is not served over HTTPS", 10, `Final URL: ${audit.finalUrl ?? lead.website}`);
+    add(items, "https", "Website is not served over HTTPS", 10, "Final URL: " + (audit.finalUrl ?? lead.website));
   }
   if (!audit.title || !audit.hasMetaDescription) {
-    add(items, "seo_basics", "Missing basic page metadata", 10, `Title: ${audit.title ? "present" : "missing"}; meta description: ${audit.hasMetaDescription ? "present" : "missing"}.`);
+    add(
+      items,
+      "seo_basics",
+      "Missing basic page metadata",
+      10,
+      "Title: " + (audit.title ? "present" : "missing") + "; meta description: " + (audit.hasMetaDescription ? "present" : "missing") + "."
+    );
   }
   if (!audit.hasContactForm && !audit.hasPhoneLink && !audit.hasEmailLink) {
     add(items, "lead_capture", "No obvious contact path detected", 10, "No contact/quote form, tel link, or mailto link was detected.");
@@ -41,7 +49,7 @@ export function calculateOpportunityScore(lead: Lead, currentYear = new Date().g
     add(items, "structured_data", "No JSON-LD structured data detected", 5, "Returned HTML did not contain application/ld+json.");
   }
   if (audit.oldCopyrightYear && audit.oldCopyrightYear <= currentYear - 3) {
-    add(items, "old_copyright", "Old copyright year detected", 5, `Latest detected copyright year: ${audit.oldCopyrightYear}.`);
+    add(items, "old_copyright", "Old copyright year detected", 5, "Latest detected copyright year: " + audit.oldCopyrightYear + ".");
   }
 
   const total = Math.min(100, items.reduce((sum, item) => sum + item.points, 0));
@@ -61,5 +69,5 @@ export function auditSummary(audit: AuditEvidence | undefined): string {
     audit.hasPrimaryCta && "CTA",
     audit.hasContactForm && "form"
   ].filter(Boolean);
-  return positives.length ? `Detected: ${positives.join(", ")}` : "Few conversion/technical signals detected";
+  return positives.length ? "Detected: " + positives.join(", ") : "Few conversion/technical signals detected";
 }
