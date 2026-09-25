@@ -21,7 +21,7 @@ export async function setLeadContactEmail(
 ): Promise<Lead> {
   const validated = validateEmail(email);
   const lead = await store.get(id);
-    if (!lead) throw new Error("Lead not found: " + id);
+  if (!lead) throw new Error("Lead not found: " + id);
   return store.update(id, (current) => ({ ...current, contactEmail: validated }));
 }
 
@@ -33,7 +33,10 @@ export async function sendApprovedOutreach(
     sender?: EmailSender;
   } = {}
 ): Promise<Lead> {
-  if (outreachInFlight.has(id)) throw new Error("An outreach send is already in progress for this lead.");
+  if (outreachInFlight.has(id)) {
+    throw new Error("An outreach send is already in progress for this lead.");
+  }
+
   outreachInFlight.add(id);
   try {
     const store = options.store || new LeadStore();
@@ -41,17 +44,17 @@ export async function sendApprovedOutreach(
     const lead = await store.get(id);
     if (!lead) throw new Error("Lead not found: " + id);
     if (lead.stage !== "approved" || !lead.approvedForOutreach) {
-    throw new Error("Lead must have explicit human approval before Zoho outreach can be sent.");
-  }
+      throw new Error("Lead must have explicit human approval before Zoho outreach can be sent.");
+    }
     if (!lead.salesAssets?.outreachDraft) {
-    throw new Error("Generate and review sales assets before sending outreach.");
-  }
+      throw new Error("Generate and review sales assets before sending outreach.");
+    }
     if (!lead.contactEmail) {
-    throw new Error("Lead does not have a contact email. Add one explicitly or audit a site with a mailto link.");
-  }
+      throw new Error("Lead does not have a contact email. Add one explicitly or audit a site with a mailto link.");
+    }
     if (lead.communications?.some((entry) => entry.kind === "customer_outreach")) {
-    throw new Error("Customer outreach is already recorded for this lead; refusing a duplicate initial send.");
-  }
+      throw new Error("Customer outreach is already recorded for this lead; refusing a duplicate initial send.");
+    }
 
     const subject = options.subject?.trim() || "Website concept for " + lead.businessName + " — TechTactics";
     const result = await sender({
@@ -63,19 +66,19 @@ export async function sendApprovedOutreach(
     return store.update(id, (current) => ({
       ...current,
       stage: "contacted",
-    communications: [
-      ...(current.communications || []),
-      {
-        at: nowIso(),
-        channel: "zoho_email",
-        kind: "customer_outreach",
-        direction: "outbound",
-        to: lead.contactEmail as string,
-        subject,
-        fromAgent: "sales",
-        providerCallId: result.providerCallId
-      }
-    ],
+      communications: [
+        ...(current.communications || []),
+        {
+          at: nowIso(),
+          channel: "zoho_email",
+          kind: "customer_outreach",
+          direction: "outbound",
+          to: lead.contactEmail as string,
+          subject,
+          fromAgent: "sales",
+          providerCallId: result.providerCallId
+        }
+      ],
       notes: [...current.notes, "Approved outreach sent through Zoho Mail MCP."]
     }));
   } finally {
@@ -86,19 +89,25 @@ export async function sendApprovedOutreach(
 export async function sendAgentEmail(
   from: AgentRole,
   to: AgentRole,
-  subject: string,
-  body: string,
+  subjectText: string,
+  bodyText: string,
   sender: EmailSender = sendZohoEmail
 ): Promise<ZohoSendResult> {
   if (from === to) throw new Error("Agent sender and recipient must be different roles.");
+
   const recipient = config.agentEmails[to];
   if (!recipient) {
     throw new Error("No email address is configured for the " + to + " agent role.");
   }
-  const taggedSubject = "[WGA:" + from + "→" + to + "] " + subject.trim();
+
+  const subject = subjectText.trim();
+  const body = bodyText.trim();
+  if (!subject) throw new Error("Internal agent email subject is required.");
+  if (!body) throw new Error("Internal agent email body is required.");
+
   return sender({
     to: recipient,
-    subject: taggedSubject,
-    body: body.trim()
+    subject: "[WGA:" + from + "→" + to + "] " + subject,
+    body
   });
 }

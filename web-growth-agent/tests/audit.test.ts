@@ -9,6 +9,8 @@ describe("audit SSRF protections", () => {
     expect(isPrivateOrReservedIp("192.168.1.10")).toBe(true);
     expect(isPrivateOrReservedIp("169.254.169.254")).toBe(true);
     expect(isPrivateOrReservedIp("::1")).toBe(true);
+    expect(isPrivateOrReservedIp("0:0:0:0:0:0:0:1")).toBe(true);
+    expect(isPrivateOrReservedIp("::ffff:127.0.0.1")).toBe(true);
     expect(isPrivateOrReservedIp("fd00::1")).toBe(true);
     expect(isPrivateOrReservedIp("fe80::1")).toBe(true);
     expect(isPrivateOrReservedIp("8.8.8.8")).toBe(false);

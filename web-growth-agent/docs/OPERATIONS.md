@@ -34,13 +34,18 @@ Only after checking every factual claim:
 npm run wga -- approve --lead <id>
 ```
 
-### 6. Contact manually
-Use the draft as a starting point. After actual contact:
+### 6. Contact after approval
+For Zoho Mail, explicitly send the reviewed draft:
+```bash
+npm run wga -- send --lead <id>
+```
+
+For contact made outside the application, mark it manually:
 ```bash
 npm run wga -- stage --lead <id> --to contacted
 ```
 
-Continue with `responded`, `proposal`, then `won` or `lost`.
+Use `mail-read` to review incoming prospect mail and `mail-reply` only after the reply text has been reviewed. Continue with `responded`, `proposal`, then `won` or `lost`.
 
 ## Cost controls
 - Scouting requires an explicit market and category.

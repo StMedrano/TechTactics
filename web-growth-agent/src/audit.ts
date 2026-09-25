@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { BlockList, isIP } from "node:net";
 import type { AuditEvidence } from "./types.js";
 import { nowIso } from "./utils.js";
 
@@ -35,47 +35,43 @@ function findOldCopyrightYear(html: string): number | undefined {
   return Math.max(...matches);
 }
 
-function blockedIpv4(address: string): boolean {
-  const parts = address.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
-  const [a, b, c] = parts;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 192 && b === 0 && c === 0) ||
-    (a === 192 && b === 0 && c === 2) ||
-    (a === 198 && (b === 18 || b === 19)) ||
-    (a === 198 && b === 51 && c === 100) ||
-    (a === 203 && b === 0 && c === 113) ||
-    a >= 224
-  );
-}
+const BLOCKED_NETWORKS = new BlockList();
+
+[
+  ["0.0.0.0", 8],
+  ["10.0.0.0", 8],
+  ["100.64.0.0", 10],
+  ["127.0.0.0", 8],
+  ["169.254.0.0", 16],
+  ["172.16.0.0", 12],
+  ["192.0.0.0", 24],
+  ["192.0.2.0", 24],
+  ["192.168.0.0", 16],
+  ["198.18.0.0", 15],
+  ["198.51.100.0", 24],
+  ["203.0.113.0", 24],
+  ["224.0.0.0", 4],
+  ["240.0.0.0", 4]
+].forEach(([address, prefix]) => BLOCKED_NETWORKS.addSubnet(address as string, prefix as number, "ipv4"));
+
+[
+  ["::", 128],
+  ["::1", 128],
+  ["::ffff:0:0", 96],
+  ["64:ff9b::", 96],
+  ["100::", 64],
+  ["2001:db8::", 32],
+  ["fc00::", 7],
+  ["fe80::", 10],
+  ["ff00::", 8]
+].forEach(([address, prefix]) => BLOCKED_NETWORKS.addSubnet(address as string, prefix as number, "ipv6"));
 
 export function isPrivateOrReservedIp(address: string): boolean {
   const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
   const family = isIP(normalized);
-  if (family === 4) return blockedIpv4(normalized);
-  if (family !== 6) return true;
-
-  if (normalized.startsWith("::ffff:")) {
-    const mapped = normalized.slice("::ffff:".length);
-    if (isIP(mapped) === 4) return blockedIpv4(mapped);
-  }
-
-  return (
-    normalized === "::" ||
-    normalized === "::1" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    /^fe[89ab]/.test(normalized) ||
-    normalized.startsWith("ff") ||
-    normalized.startsWith("2001:db8:")
-  );
+  if (family === 4) return BLOCKED_NETWORKS.check(normalized, "ipv4");
+  if (family === 6) return BLOCKED_NETWORKS.check(normalized, "ipv6");
+  return true;
 }
 
 async function assertPublicHttpUrl(url: URL): Promise<void> {
