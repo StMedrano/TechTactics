@@ -52,3 +52,18 @@ Use `mail-read` to review incoming prospect mail and `mail-reply` only after the
 - Default live search is capped at 10 results per category from the CLI.
 - AI generation runs only for an explicitly selected lead.
 - Google Places field masks should be reviewed against current pricing before production.
+
+
+## Ambiguous Zoho send recovery
+The application writes a durable send reservation before calling Zoho. If a timeout, process interruption, or storage issue leaves the attempt in `pending` or `needs_review`, do **not** retry automatically.
+
+1. Check the Zoho Sent folder for the exact recipient/subject.
+2. If the message is present:
+   ```bash
+   npm run wga -- reconcile-send --lead <id> --result sent
+   ```
+3. If the message is definitely absent:
+   ```bash
+   npm run wga -- reconcile-send --lead <id> --result not-sent
+   ```
+4. Only after `not-sent` reconciliation may a new initial send be attempted.
