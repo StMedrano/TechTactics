@@ -1,0 +1,20 @@
+services:
+  web-growth-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: web-growth-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+    ports:
+      - "4317:4317"
+    networks:
+      - techtactics
+
+networks:
+  techtactics:
+    name: techtactics
