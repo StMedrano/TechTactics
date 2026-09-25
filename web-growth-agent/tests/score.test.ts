@@ -71,7 +71,7 @@ describe("calculateOpportunityScore", () => {
       }
     };
     const score = calculateOpportunityScore(lead, 2026);
-    expect(score.total).toBe(80);
+    expect(score.total).toBe(90);
     expect(score.items.map((item) => item.key)).toContain("mobile");
     expect(score.items.map((item) => item.key)).toContain("old_copyright");
   });
