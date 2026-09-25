@@ -20,10 +20,18 @@ Owns private concepts/demos and reusable presentation patterns. It must not repr
 
 ## Sales
 
-Owns evidence-based outreach/proposal drafts and follow-up recommendations. First contact remains human-approved unless TechTactics later changes that policy explicitly.
+Owns evidence-based outreach/proposal drafts and follow-up recommendations. First contact remains human-approved; after approval, a person may explicitly trigger the guarded Zoho send path.
+
+## Accounting / Business Tax
+
+Owns bookkeeping analysis, receivables/payables review, financial summaries, close checklists, and tax-prep support using read-only Zoho Books access by default. It escalates filing positions and material tax questions to a CPA, EA, or tax attorney.
+
+## Legal
+
+Owns contract/document summaries, obligation and deadline extraction, issue spotting, first-pass drafting, and attorney briefing packets. It does not act as counsel or make binding legal decisions.
 
 ## Handoffs
 
 Workers should hand off through durable artifacts—lead records, audit evidence, drafts, decisions, files—not through assumptions about what another model "remembers."
 
-As delivery grows, add specialized workers for Client Onboarding, Project Management, Content, Development, QA/Launch, Care Plan/Support, Billing/Finance, and Analytics.
+As delivery grows, add specialized workers for Client Onboarding, Project Management, Content, Development, QA/Launch, Care Plan/Support, and Analytics. Billing/Finance coordination should hand off to Accounting/Tax.
