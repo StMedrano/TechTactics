@@ -14,11 +14,12 @@ function optional(value: string | undefined): string | undefined {
 
 export const config = {
   googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY?.trim() || "",
-  openAIKey: process.env.OPENAI_API_KEY?.trim() || "",
-  openAIModel: process.env.OPENAI_MODEL?.trim() || "gpt-5.6-luna",
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
+  geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash",
   zohoMcpUrl: process.env.ZOHO_MCP_URL?.trim() || "",
   zohoBooksMcpUrl: process.env.ZOHO_BOOKS_MCP_URL?.trim() || "",
   zohoBooksReadTools: csv(process.env.WGA_ZOHO_BOOKS_READ_TOOLS, []),
+  host: process.env.WGA_HOST?.trim() || "127.0.0.1",
   port: Number(process.env.WGA_PORT || "4317"),
   dataDir: path.resolve(process.cwd(), process.env.WGA_DATA_DIR || "./data"),
   artifactDir: path.resolve(process.cwd(), process.env.WGA_ARTIFACT_DIR || "./artifacts"),
