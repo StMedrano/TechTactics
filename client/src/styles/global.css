@@ -1326,3 +1326,59 @@ td[colspan] {
   .tag-row span, .badge, .role-chip, .status-pill { padding: .4rem .7rem; }
   .footer-links { width: 100%; flex-wrap: wrap; }
 }
+
+
+/* Website-building business public experience */
+.website-hero {
+  min-height: 82vh;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(240,201,122,.18), transparent 26%),
+    radial-gradient(circle at 82% 28%, rgba(77,112,234,.18), transparent 24%),
+    linear-gradient(145deg, #17283d 0%, #101b2b 52%, #0b1421 100%);
+}
+.website-hero::before {
+  content: "";
+  position: absolute;
+  width: min(52vw, 720px);
+  aspect-ratio: 1;
+  right: -14%;
+  bottom: -42%;
+  border-radius: 50%;
+  border: 1px solid rgba(240,201,122,.12);
+  box-shadow:
+    0 0 0 70px rgba(240,201,122,.025),
+    0 0 0 140px rgba(83,124,243,.025);
+}
+.website-hero .hero-overlay {
+  background: linear-gradient(90deg, rgba(7,12,20,.5), rgba(11,18,29,.16) 55%, rgba(7,12,20,.4));
+}
+.service-eyebrow {
+  color: var(--gold-soft);
+  font-size: .78rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: .6rem;
+}
+.package-card {
+  display: grid;
+  align-content: start;
+  gap: .9rem;
+}
+.package-card h3,
+.package-card p,
+.package-card ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+.package-card .clean-list {
+  min-height: 12rem;
+  padding-left: 1.15rem;
+}
+.package-card .clean-list li {
+  padding: .6rem 0;
+}
+.marketing-footer {
+  border-top: 1px solid var(--line);
+  background: rgba(9,15,24,.5);
+}
