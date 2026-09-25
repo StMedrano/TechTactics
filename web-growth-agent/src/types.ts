@@ -10,7 +10,7 @@ export type LeadStage =
   | "won"
   | "lost";
 
-export type AgentRole = "manager" | "scout" | "auditor" | "designer" | "sales";
+export type AgentRole = "manager" | "scout" | "auditor" | "designer" | "sales" | "accounting" | "legal";
 
 export interface AuditEvidence {
   checkedAt: string;
