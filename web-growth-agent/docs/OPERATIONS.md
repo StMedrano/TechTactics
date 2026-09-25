@@ -4,7 +4,7 @@
 
 ### 1. Scout one market deliberately
 ```bash
-npm run wga -- scout --market "Prairieville, LA" --category plumber --category electrician --max-results 10
+npm run wga -- scout --market "Prairieville, LA" --category plumber --category electrician --max-results 10 --source auto
 ```
 
 ### 2. Audit and score
@@ -51,7 +51,7 @@ Use `mail-read` to review incoming prospect mail and `mail-reply` only after the
 - Scouting requires an explicit market and category.
 - Default live search is capped at 10 results per category from the CLI.
 - AI generation runs only for an explicitly selected lead.
-- Google Places field masks should be reviewed against current pricing before production.
+- Gemini Google Search grounding may generate one or more billable search queries per scout request; keep market/category scopes deliberate.\n- OpenStreetMap Overpass is a best-effort fallback for supported category tags and should not be treated as a complete business directory.
 
 
 ## Ambiguous Zoho send recovery
