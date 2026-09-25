@@ -192,9 +192,91 @@ Each division should have its own:
 - terms
 - reporting
 
-## TikTok reference
+## AI-native company operating model
 
-Reference supplied for this pivot:
+The supplied Professor Glitch video was uploaded directly and reviewed on September 25, 2026. Its useful framework is now part of the TechTactics operating model.
+
+### Flip the order
+
+Do not build the company first and try to onboard the AI team later. Bring the agents into the business while the business is being built so they accumulate the operating knowledge, decisions, and rationale as the work happens. This reduces future handoff and makes "day one" of the AI team the same as day one of the company process.
+
+### Five parts of every AI worker
+
+Every agent should have five explicit components:
+
+1. **Skills** — written instructions and SOPs the agent follows.
+2. **Memory** — durable, user-owned files the agent writes to and reads back. Do not rely on model memory as the source of truth.
+3. **Context** — the current lead, client, project, business state, and relevant recent information in front of the agent for this run.
+4. **Tools** — the systems and actions the agent is explicitly allowed to touch.
+5. **More than one** — multiple specialized workers assembled into a company, with each worker owning a clear lane.
+
+For the Website Growth Agent, these ideas are represented in `web-growth-agent/company-os/`.
+
+### Preserve the why, not only the what
+
+Company knowledge should capture decisions, rationale, constraints, and rejected alternatives. The goal is to prevent future agents from guessing why TechTactics works a certain way.
+
+A decision record should answer:
+- What changed?
+- Why did it change?
+- What evidence or constraint drove the decision?
+- Which systems or workflows are affected?
+- What would cause us to revisit it?
+
+### Documentation is part of doing the work
+
+Do not wait until the end of a project to document it. When an agent builds or changes something, the same workflow should update the durable documentation.
+
+For a client website this can include:
+- Site structure and page map
+- How to add a page
+- How to replace images/content
+- Brand colors, typography, and reusable components
+- Lead/booking flow
+- CRM and form mappings
+- Domain/hosting/deployment details
+- Important client decisions and their rationale
+
+This turns every completed project into reusable operating knowledge.
+
+### Rich founder input
+
+Typed prompts encourage short instructions. Voice or conversational input can capture more context, especially the reason behind decisions. A future TechTactics Founder Inbox should accept voice/text notes, extract decisions and tasks, and route durable facts into the correct company memory or decision file with review before sensitive changes.
+
+### Build the "boring half" that makes the website valuable
+
+A website is the first component, not the whole system. TechTactics should connect the client-facing site to the business systems that make the site useful:
+
+- Lead capture
+- CRM/customer records
+- Follow-up
+- Scheduling/booking
+- Proposals and approvals
+- Invoicing/payments
+- Support/change requests
+- Analytics
+- Automation
+
+The Website Growth Agent should therefore qualify opportunities not only for design work, but for business-process improvements that fit the Launch, Growth, or Business Platform package.
+
+### Natural-language operations with approval gates
+
+Routine internal changes should be conversational: the owner states the desired outcome and the appropriate agent updates the site, workflow, integration, and documentation together.
+
+Human approval remains required for risky or external actions such as:
+- Sending first-contact outreach
+- Publishing public content
+- Changing pricing
+- Spending money
+- Sending invoices or proposals
+- Changing production infrastructure
+- Deleting business/customer data
+
+### Reuse what the company learns
+
+Once TechTactics learns how to solve a recurring problem, convert it into a reusable skill, template, integration, checklist, or playbook. Future client projects should reuse those assets instead of rebuilding the same capability from scratch.
+
+### Source
+
+Professor Glitch video supplied by the owner in the project conversation, originally referenced by:
 https://www.tiktok.com/t/ZP8TbeHjk/
-
-The short TikTok URL could not be retrieved through the available web access on September 25, 2026, so no video-specific claims have been added yet. Once the video itself or transcript is available in the conversation, its useful tactics should be added to this document and the Website Growth Agent workflow.

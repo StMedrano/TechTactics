@@ -8,6 +8,8 @@ The broader TechTactics vision is intentionally preserved for a later phase: MSP
 
 See [WEBSITE_BUSINESS_PIVOT.md](WEBSITE_BUSINESS_PIVOT.md) for the current product, sales-agent, portal, and future-division architecture.
 
+See [AI_COMPANY_OPERATING_MODEL.md](AI_COMPANY_OPERATING_MODEL.md) for the durable skills/memory/context/tools/team model used to build TechTactics with its AI workers from day one.
+
 Customer, employee, and admin portal with Zoho Catalyst services for billing,
 dispatch, time tracking, notifications, phone intake, and business automation.
 
