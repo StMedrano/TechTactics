@@ -35,7 +35,8 @@ function findOldCopyrightYear(html: string): number | undefined {
   return Math.max(...matches);
 }
 
-const BLOCKED_NETWORKS = new BlockList();
+const BLOCKED_IPV4 = new BlockList();
+const BLOCKED_IPV6 = new BlockList();
 
 [
   ["0.0.0.0", 8],
@@ -52,7 +53,7 @@ const BLOCKED_NETWORKS = new BlockList();
   ["203.0.113.0", 24],
   ["224.0.0.0", 4],
   ["240.0.0.0", 4]
-].forEach(([address, prefix]) => BLOCKED_NETWORKS.addSubnet(address as string, prefix as number, "ipv4"));
+].forEach(([address, prefix]) => BLOCKED_IPV4.addSubnet(address as string, prefix as number, "ipv4"));
 
 [
   ["::", 128],
@@ -64,13 +65,13 @@ const BLOCKED_NETWORKS = new BlockList();
   ["fc00::", 7],
   ["fe80::", 10],
   ["ff00::", 8]
-].forEach(([address, prefix]) => BLOCKED_NETWORKS.addSubnet(address as string, prefix as number, "ipv6"));
+].forEach(([address, prefix]) => BLOCKED_IPV6.addSubnet(address as string, prefix as number, "ipv6"));
 
 export function isPrivateOrReservedIp(address: string): boolean {
   const normalized = address.toLowerCase().replace(/^\[|\]$/g, "");
   const family = isIP(normalized);
-  if (family === 4) return BLOCKED_NETWORKS.check(normalized, "ipv4");
-  if (family === 6) return BLOCKED_NETWORKS.check(normalized, "ipv6");
+  if (family === 4) return BLOCKED_IPV4.check(normalized, "ipv4");
+  if (family === 6) return BLOCKED_IPV6.check(normalized, "ipv6");
   return true;
 }
 
