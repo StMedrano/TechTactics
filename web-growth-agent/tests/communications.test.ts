@@ -2,7 +2,7 @@ import { mkdtemp } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { sendApprovedOutreach } from "../src/communications.js";
+import { reconcileOutreachSend, sendApprovedOutreach } from "../src/communications.js";
 import { LeadStore } from "../src/store.js";
 import type { Lead } from "../src/types.js";
 
@@ -92,5 +92,24 @@ describe("Zoho customer outreach gate", () => {
     await expect(sendApprovedOutreach("mail-lead", { store, sender })).rejects.toThrow(/provider timeout/i);
     const stored = await store.get("mail-lead");
     expect(stored?.outreachSend?.status).toBe("needs_review");
+  });
+
+  it("allows retry only after a human confirms the ambiguous attempt was not sent", async () => {
+    const uncertain = lead("approved", true);
+    uncertain.outreachSend = {
+      status: "needs_review",
+      attemptId: "ambiguous",
+      startedAt: "2026-01-01T00:00:00.000Z",
+      to: "owner@example.com",
+      subject: "Website concept"
+    };
+    const store = await storeWith(uncertain);
+    const reconciled = await reconcileOutreachSend("mail-lead", "not-sent", store);
+    expect(reconciled.outreachSend).toBeUndefined();
+
+    const sender = vi.fn().mockResolvedValue({ summary: "sent", providerCallId: "provider-2" });
+    const sent = await sendApprovedOutreach("mail-lead", { store, sender });
+    expect(sent.stage).toBe("contacted");
+    expect(sender).toHaveBeenCalledTimes(1);
   });
 });
