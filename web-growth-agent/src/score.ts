@@ -9,8 +9,18 @@ export function calculateOpportunityScore(lead: Lead, currentYear = new Date().g
   const items: ScoreItem[] = [];
 
   if (!lead.website) {
-    add(items, "no_website", "No website listed", 40, "The business record has no website URL.");
-    return { total: 40, items, calculatedAt: nowIso() };
+    if (lead.websiteDiscoveryStatus === "verified_absent") {
+      add(items, "no_website", "No website verified", 40, "The lead record explicitly marks the business as having no verified website.");
+    } else if (lead.websiteDiscoveryStatus === "not_found") {
+      add(
+        items,
+        "website_not_found",
+        "No website found during discovery",
+        35,
+        "Grounded search or the OpenStreetMap record did not identify an own website. Human verification is still required."
+      );
+    }
+    return { total: items.reduce((sum, item) => sum + item.points, 0), items, calculatedAt: nowIso() };
   }
 
   const audit = lead.audit;
