@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { assetPath } from '../../utils/assets'
 import { scrollToSection } from '../../utils/scrollToSection'
@@ -8,6 +8,21 @@ const inquiryHref =
 
 export default function MarketingLayout({ children }) {
   const [open, setOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  const goToSection = (sectionId, onDone) => (event) => {
+    if (location.pathname === '/') {
+      scrollToSection(sectionId, onDone)(event)
+      return
+    }
+    event.preventDefault()
+    navigate('/')
+    window.setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (typeof onDone === 'function') onDone()
+    }, 50)
+  }
 
   return (
     <div className="marketing-shell">
@@ -18,11 +33,11 @@ export default function MarketingLayout({ children }) {
           </Link>
 
           <nav className="desktop-nav">
-            <a href="#services" onClick={scrollToSection('services')}>Services</a>
-            <a href="#packages" onClick={scrollToSection('packages')}>Packages</a>
-            <a href="#process" onClick={scrollToSection('process')}>Our Process</a>
-            <a href="#reviews" onClick={scrollToSection('reviews')}>Work</a>
-            <a href="#contact" onClick={scrollToSection('contact')}>Contact</a>
+            <a href="#services" onClick={goToSection('services')}>Services</a>
+            <a href="#packages" onClick={goToSection('packages')}>Packages</a>
+            <a href="#process" onClick={goToSection('process')}>Our Process</a>
+            <a href="#reviews" onClick={goToSection('reviews')}>Work</a>
+            <a href="#contact" onClick={goToSection('contact')}>Contact</a>
             <Link to="/terms">Terms</Link>
           </nav>
 
@@ -36,11 +51,11 @@ export default function MarketingLayout({ children }) {
 
         {open && (
           <div className="mobile-drawer">
-            <a href="#services" onClick={scrollToSection('services', () => setOpen(false))}>Services</a>
-            <a href="#packages" onClick={scrollToSection('packages', () => setOpen(false))}>Packages</a>
-            <a href="#process" onClick={scrollToSection('process', () => setOpen(false))}>Our Process</a>
-            <a href="#reviews" onClick={scrollToSection('reviews', () => setOpen(false))}>Work</a>
-            <a href="#contact" onClick={scrollToSection('contact', () => setOpen(false))}>Contact</a>
+            <a href="#services" onClick={goToSection('services', () => setOpen(false))}>Services</a>
+            <a href="#packages" onClick={goToSection('packages', () => setOpen(false))}>Packages</a>
+            <a href="#process" onClick={goToSection('process', () => setOpen(false))}>Our Process</a>
+            <a href="#reviews" onClick={goToSection('reviews', () => setOpen(false))}>Work</a>
+            <a href="#contact" onClick={goToSection('contact', () => setOpen(false))}>Contact</a>
             <Link to="/terms" onClick={() => setOpen(false)}>Terms</Link>
             <a href={inquiryHref} onClick={() => setOpen(false)}>Start a Project</a>
           </div>
@@ -53,9 +68,9 @@ export default function MarketingLayout({ children }) {
         <div className="container footer-row">
           <div>(c) 2026 TechTactics Websites - SMART SOLUTIONS. SECURE CONNECTIONS.</div>
           <div className="footer-links">
-            <a href="#services" onClick={scrollToSection('services')}>Services</a>
-            <a href="#packages" onClick={scrollToSection('packages')}>Packages</a>
-            <a href="#contact" onClick={scrollToSection('contact')}>Contact</a>
+            <a href="#services" onClick={goToSection('services')}>Services</a>
+            <a href="#packages" onClick={goToSection('packages')}>Packages</a>
+            <a href="#contact" onClick={goToSection('contact')}>Contact</a>
             <Link to="/terms">Terms of Service</Link>
           </div>
         </div>

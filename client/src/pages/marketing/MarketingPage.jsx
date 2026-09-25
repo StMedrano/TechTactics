@@ -14,7 +14,15 @@ export default function MarketingPage() {
     publicService
       .getPublishedReviews()
       .then((payload) => {
-        setReviews(Array.isArray(payload) ? payload : [])
+        const published = Array.isArray(payload) ? payload : []
+        const websiteReviews = published.filter((review) => {
+          const context = [review.division, review.category, review.serviceCategory, review.serviceTitle]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return /website|web design|web development/.test(context)
+        })
+        setReviews(websiteReviews)
       })
       .catch(() => {
         setReviews([])
