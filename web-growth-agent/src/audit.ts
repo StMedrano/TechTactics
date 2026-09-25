@@ -1,10 +1,21 @@
 import { lookup } from "node:dns/promises";
+import { request as httpRequest, type IncomingHttpHeaders } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { BlockList, isIP } from "node:net";
 import type { AuditEvidence } from "./types.js";
 import { nowIso } from "./utils.js";
 
 const CTA_RE = /(get\s+(a\s+)?quote|request\s+(an\s+)?estimate|book\s+now|schedule|contact\s+us|get\s+started|call\s+(us|now))/i;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const MAX_BODY_BYTES = 2_000_000;
+
+type ResolvedAddress = { address: string; family: 4 | 6 };
+type WebsiteResponse = {
+  status: number;
+  headers: IncomingHttpHeaders;
+  body: string;
+  finalUrl: string;
+};
 
 function has(re: RegExp, value: string): boolean {
   return re.test(value);
@@ -39,32 +50,15 @@ const BLOCKED_IPV4 = new BlockList();
 const BLOCKED_IPV6 = new BlockList();
 
 [
-  ["0.0.0.0", 8],
-  ["10.0.0.0", 8],
-  ["100.64.0.0", 10],
-  ["127.0.0.0", 8],
-  ["169.254.0.0", 16],
-  ["172.16.0.0", 12],
-  ["192.0.0.0", 24],
-  ["192.0.2.0", 24],
-  ["192.168.0.0", 16],
-  ["198.18.0.0", 15],
-  ["198.51.100.0", 24],
-  ["203.0.113.0", 24],
-  ["224.0.0.0", 4],
-  ["240.0.0.0", 4]
+  ["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8],
+  ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24],
+  ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24],
+  ["224.0.0.0", 4], ["240.0.0.0", 4]
 ].forEach(([address, prefix]) => BLOCKED_IPV4.addSubnet(address as string, prefix as number, "ipv4"));
 
 [
-  ["::", 128],
-  ["::1", 128],
-  ["::ffff:0:0", 96],
-  ["64:ff9b::", 96],
-  ["100::", 64],
-  ["2001:db8::", 32],
-  ["fc00::", 7],
-  ["fe80::", 10],
-  ["ff00::", 8]
+  ["::", 128], ["::1", 128], ["::ffff:0:0", 96], ["64:ff9b::", 96], ["100::", 64],
+  ["2001:db8::", 32], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8]
 ].forEach(([address, prefix]) => BLOCKED_IPV6.addSubnet(address as string, prefix as number, "ipv6"));
 
 export function isPrivateOrReservedIp(address: string): boolean {
@@ -75,7 +69,7 @@ export function isPrivateOrReservedIp(address: string): boolean {
   return true;
 }
 
-async function assertPublicHttpUrl(url: URL): Promise<void> {
+async function resolvePublicAddress(url: URL): Promise<ResolvedAddress> {
   if (!["http:", "https:"].includes(url.protocol)) {
     throw new Error("Blocked audit URL protocol: " + url.protocol);
   }
@@ -93,9 +87,10 @@ async function assertPublicHttpUrl(url: URL): Promise<void> {
     throw new Error("Blocked private or local audit hostname.");
   }
 
-  if (isIP(hostname)) {
+  const literalFamily = isIP(hostname);
+  if (literalFamily) {
     if (isPrivateOrReservedIp(hostname)) throw new Error("Blocked private or reserved audit address.");
-    return;
+    return { address: hostname, family: literalFamily as 4 | 6 };
   }
 
   const addresses = await lookup(hostname, { all: true, verbatim: true });
@@ -105,29 +100,77 @@ async function assertPublicHttpUrl(url: URL): Promise<void> {
       throw new Error("Blocked audit hostname resolving to a private or reserved address.");
     }
   }
+
+  const selected = addresses[0];
+  return { address: selected.address, family: selected.family as 4 | 6 };
 }
 
-async function fetchPublicWebsite(initialUrl: string): Promise<{ response: Response; finalUrl: string }> {
-  let current = new URL(initialUrl);
-  for (let redirects = 0; redirects <= 5; redirects++) {
-    await assertPublicHttpUrl(current);
-    const response = await fetch(current, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(12_000),
+function header(headers: IncomingHttpHeaders, name: string): string {
+  const value = headers[name.toLowerCase()];
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+async function requestPinned(url: URL, resolved: ResolvedAddress): Promise<Omit<WebsiteResponse, "finalUrl">> {
+  const transport = url.protocol === "https:" ? httpsRequest : httpRequest;
+
+  return new Promise((resolve, reject) => {
+    const req = transport(url, {
+      method: "GET",
       headers: {
-        "User-Agent": "TechTactics-WebGrowthAudit/0.1 (+human-reviewed-sales-research)"
+        "User-Agent": "TechTactics-WebGrowthAudit/0.1 (+human-reviewed-sales-research)",
+        "Accept": "text/html,application/xhtml+xml"
+      },
+      lookup: (_hostname, _options, callback) => {
+        callback(null, resolved.address, resolved.family);
       }
+    }, (res) => {
+      const status = res.statusCode || 0;
+
+      if (REDIRECT_STATUSES.has(status)) {
+        res.resume();
+        resolve({ status, headers: res.headers, body: "" });
+        return;
+      }
+
+      const chunks: Buffer[] = [];
+      let stored = 0;
+      res.on("data", (chunk: Buffer | string) => {
+        if (stored >= MAX_BODY_BYTES) return;
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        const remaining = MAX_BODY_BYTES - stored;
+        const piece = buffer.subarray(0, remaining);
+        chunks.push(piece);
+        stored += piece.length;
+      });
+      res.on("end", () => {
+        resolve({ status, headers: res.headers, body: Buffer.concat(chunks).toString("utf8") });
+      });
+      res.on("error", reject);
     });
 
+    req.setTimeout(12_000, () => req.destroy(new Error("Website request timed out.")));
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+async function fetchPublicWebsite(initialUrl: string): Promise<WebsiteResponse> {
+  let current = new URL(initialUrl);
+
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    const resolved = await resolvePublicAddress(current);
+    const response = await requestPinned(current, resolved);
+
     if (!REDIRECT_STATUSES.has(response.status)) {
-      return { response, finalUrl: current.href };
+      return { ...response, finalUrl: current.href };
     }
 
-    const location = response.headers.get("location");
-    if (!location) return { response, finalUrl: current.href };
+    const location = header(response.headers, "location");
+    if (!location) return { ...response, finalUrl: current.href };
     if (redirects === 5) throw new Error("Website exceeded the 5-redirect audit limit.");
     current = new URL(location, current);
   }
+
   throw new Error("Website redirect processing failed.");
 }
 
@@ -138,17 +181,18 @@ export async function auditWebsite(url: string): Promise<AuditEvidence> {
   if (!/^https?:\/\//i.test(normalized)) normalized = "https://" + normalized;
 
   try {
-    const { response, finalUrl } = await fetchPublicWebsite(normalized);
+    const response = await fetchPublicWebsite(normalized);
     const responseMs = Date.now() - started;
-    const contentType = response.headers.get("content-type") || "";
+    const contentType = header(response.headers, "content-type");
+    const finalUrl = response.finalUrl;
     const https = finalUrl.startsWith("https://");
 
     if (!contentType.includes("text/html")) {
       notes.push("Expected HTML but received " + (contentType || "unknown content type") + ".");
     }
 
-    const raw = await response.text();
-    const html = raw.slice(0, 2_000_000);
+    const raw = response.body;
+    const html = raw.slice(0, MAX_BODY_BYTES);
     const lower = html.toLowerCase();
     const contactEmail = extractMailto(html);
     const oldCopyrightYear = findOldCopyrightYear(html);
@@ -165,7 +209,7 @@ export async function auditWebsite(url: string): Promise<AuditEvidence> {
 
     return {
       checkedAt: nowIso(),
-      reachable: response.ok,
+      reachable: response.status >= 200 && response.status < 300,
       finalUrl,
       statusCode: response.status,
       responseMs,
