@@ -127,7 +127,7 @@ Rules:
 - Stay within the requested market/category.`;
 
   const response = await client.models.generateContent({
-    model: config.geminiModel,
+    model: config.scoutModel,
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }]
