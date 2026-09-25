@@ -1,5 +1,3 @@
-import { assetPath } from '../utils/assets'
-
 export const roleHomes = {
   customer: '/portal/customer',
   employee: '/portal/employee',
