@@ -27,6 +27,7 @@ export async function auditLead(id: string, store = new LeadStore()): Promise<Le
   const scored: Lead = {
     ...lead,
     audit,
+    contactEmail: lead.contactEmail || audit?.contactEmail,
     stage: lead.stage === "new" ? "audited" : lead.stage,
     updatedAt: nowIso()
   };
@@ -68,7 +69,10 @@ export async function generateForLead(id: string, store = new LeadStore()): Prom
     ...current,
     salesAssets: assets,
     demoPath: artifact.demoPath,
-    stage: current.stage === "qualified" ? "demo_ready" : current.stage
+    approvedForOutreach: false,
+    approvedOutreachGeneratedAt: undefined,
+    outreachSend: undefined,
+    stage: "demo_ready"
   }));
 }
 
@@ -78,9 +82,14 @@ export async function approveLead(id: string, store = new LeadStore()): Promise<
   if (lead.stage !== "demo_ready" && lead.stage !== "approved") {
     throw new Error(`Only a demo-ready lead can be approved. Current stage: ${lead.stage}`);
   }
+  if (!lead.salesAssets?.outreachDraft || !lead.salesAssets.generatedAt) {
+    throw new Error("Generate and review sales assets before approving outreach.");
+  }
   return store.update(id, (current) => ({
     ...current,
     approvedForOutreach: true,
+    approvedOutreachGeneratedAt: current.salesAssets?.generatedAt,
+    outreachSend: undefined,
     stage: "approved"
   }));
 }

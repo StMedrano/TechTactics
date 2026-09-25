@@ -34,16 +34,36 @@ Only after checking every factual claim:
 npm run wga -- approve --lead <id>
 ```
 
-### 6. Contact manually
-Use the draft as a starting point. After actual contact:
+### 6. Contact after approval
+For Zoho Mail, explicitly send the reviewed draft:
+```bash
+npm run wga -- send --lead <id>
+```
+
+For contact made outside the application, mark it manually:
 ```bash
 npm run wga -- stage --lead <id> --to contacted
 ```
 
-Continue with `responded`, `proposal`, then `won` or `lost`.
+Use `mail-read` to review incoming prospect mail and `mail-reply` only after the reply text has been reviewed. Continue with `responded`, `proposal`, then `won` or `lost`.
 
 ## Cost controls
 - Scouting requires an explicit market and category.
 - Default live search is capped at 10 results per category from the CLI.
 - AI generation runs only for an explicitly selected lead.
 - Google Places field masks should be reviewed against current pricing before production.
+
+
+## Ambiguous Zoho send recovery
+The application writes a durable send reservation before calling Zoho. If a timeout, process interruption, or storage issue leaves the attempt in `pending` or `needs_review`, do **not** retry automatically.
+
+1. Check the Zoho Sent folder for the exact recipient/subject.
+2. If the message is present:
+   ```bash
+   npm run wga -- reconcile-send --lead <id> --result sent
+   ```
+3. If the message is definitely absent:
+   ```bash
+   npm run wga -- reconcile-send --lead <id> --result not-sent
+   ```
+4. Only after `not-sent` reconciliation may a new initial send be attempted.

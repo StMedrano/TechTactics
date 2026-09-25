@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import { auditAll, approveLead, generateForLead, qualifyAll, setLeadStage } from "./pipeline.js";
+import { reconcileOutreachSend, sendAgentEmail, sendApprovedOutreach, setLeadContactEmail } from "./communications.js";
+import { readZohoMail, replyZohoEmail, zohoMailStatus } from "./zoho.js";
+import { readZohoBooks, zohoBooksStatus } from "./books.js";
 import { buildReport } from "./report.js";
 import { scoutAndStore } from "./scout.js";
 import { seedFixtures } from "./seed.js";
 import { startServer } from "./server.js";
 import { LeadStore } from "./store.js";
-import type { LeadStage } from "./types.js";
+import type { AgentRole, LeadStage } from "./types.js";
 
 const args = process.argv.slice(2);
 const command = args[0] || "help";
@@ -55,6 +58,33 @@ Commands:
 
   run --market "Prairieville, LA" --category plumber [--category electrician] [--max-results 10]
       Scout, audit, and qualify. Does not generate AI assets or send outreach.
+
+  contact-email --lead <id> --email <address>
+      Set or correct the customer email used for approved outreach.
+
+  zoho-status
+      Verify the configured Zoho Mail MCP connection with read-only tools.
+
+  mail-read --task "<request>"
+      Search/read Zoho Mail with read-only tools. Email content is treated as untrusted data.
+
+  mail-reply --message-id <id> --body "<text>"
+      Explicitly send one reply to an existing Zoho Mail message.
+
+  send --lead <id> [--subject "<subject>"]
+      Send the reviewed outreach draft through Zoho. Requires the lead to already be approved.
+
+  reconcile-send --lead <id> --result sent|not-sent
+      Resolve an interrupted/ambiguous Zoho send after checking the Zoho Sent folder.
+
+  agent-mail --from sales --to manager --subject "<subject>" --body "<text>"
+      Send one internal role-to-role message to a configured agent mailbox.
+
+  books-status
+      Verify the Accounting/Tax assistant's read-only Zoho Books MCP connection.
+
+  books-read --task "<request>"
+      Read/analyze accounting data through the configured read-only Zoho Books tool allow-list.
 
   report
       Print pipeline metrics and top opportunities.
@@ -125,6 +155,76 @@ async function main(): Promise<void> {
     if (!id || !next) throw new Error("--lead and --to are required.");
     const lead = await setLeadStage(id, next, store);
     console.log(`${lead.businessName}: ${lead.stage}`);
+    return;
+  }
+
+  if (command === "contact-email") {
+    const id = value("--lead");
+    const email = value("--email");
+    if (!id || !email) throw new Error("--lead and --email are required.");
+    const lead = await setLeadContactEmail(id, email, store);
+    console.log("Contact email set for " + lead.businessName + ": " + lead.contactEmail);
+    return;
+  }
+
+  if (command === "zoho-status") {
+    console.log(await zohoMailStatus());
+    return;
+  }
+
+  if (command === "mail-read") {
+    const task = value("--task");
+    if (!task) throw new Error("--task is required.");
+    console.log(await readZohoMail(task));
+    return;
+  }
+
+  if (command === "mail-reply") {
+    const messageId = value("--message-id");
+    const body = value("--body");
+    if (!messageId || !body) throw new Error("--message-id and --body are required.");
+    console.log((await replyZohoEmail(messageId, body)).summary);
+    return;
+  }
+
+  if (command === "send") {
+    const id = value("--lead");
+    if (!id) throw new Error("--lead is required.");
+    const lead = await sendApprovedOutreach(id, { subject: value("--subject"), store });
+    console.log("Zoho outreach sent to " + lead.contactEmail + "; lead moved to contacted.");
+    return;
+  }
+
+  if (command === "reconcile-send") {
+    const id = value("--lead");
+    const result = value("--result");
+    if (!id || (result !== "sent" && result !== "not-sent")) {
+      throw new Error("--lead and --result sent|not-sent are required.");
+    }
+    const lead = await reconcileOutreachSend(id, result, store);
+    console.log("Reconciled outreach for " + lead.businessName + ": " + result + ".");
+    return;
+  }
+
+  if (command === "agent-mail") {
+    const from = value("--from") as AgentRole | undefined;
+    const to = value("--to") as AgentRole | undefined;
+    const subject = value("--subject");
+    const body = value("--body");
+    if (!from || !to || !subject || !body) throw new Error("--from, --to, --subject, and --body are required.");
+    console.log((await sendAgentEmail(from, to, subject, body)).summary);
+    return;
+  }
+
+  if (command === "books-status") {
+    console.log(await zohoBooksStatus());
+    return;
+  }
+
+  if (command === "books-read") {
+    const task = value("--task");
+    if (!task) throw new Error("--task is required.");
+    console.log(await readZohoBooks(task));
     return;
   }
 

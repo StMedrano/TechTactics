@@ -12,5 +12,5 @@ This project is designed for targeted, human-reviewed business development rathe
 - Keep API keys and prospect data out of Git.
 - Review all model-generated claims before using them externally.
 
-## V1 safeguard
-The software itself does not send outreach. It generates drafts and requires a separate human approval state before a lead can even be marked as contacted.
+## Mail safeguards
+The system does not autonomously send outreach. It generates drafts, requires a separate human approval state, and requires a second explicit send action before Zoho Mail is allowed to send the initial customer message. Read/search mail workflows are configured without send/reply tools. Internal agent email is restricted to configured role addresses. Honor opt-outs before any later follow-up.

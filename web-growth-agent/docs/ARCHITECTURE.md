@@ -8,9 +8,10 @@
 5. **Qualifier** promotes audited leads above the configured threshold.
 6. **AI agent** creates a summary, outreach draft, proposal draft, and demo copy. If no OpenAI key exists, deterministic fallback assets keep the workflow testable.
 7. **Site generator** writes a private static concept.
-8. **Human approval** is required before the lead can enter the contacted stage.
-9. **Dashboard/report** exposes the pipeline and projected build value.
-10. Wins/losses can later feed category/market learning.
+8. **Human approval** moves a reviewed lead to approved.
+9. **Zoho Mail MCP** can read/search mail with read-only tools. An initial customer send is available only from the approved state and moves the lead to contacted only after Zoho reports a successful send.
+10. **Dashboard/report** exposes the pipeline and projected build value.
+11. Wins/losses can later feed category/market learning.
 
 ## Trust boundary
 AI text is never considered audit evidence. The source-of-truth evidence is generated before the AI step and supplied to the model as a factual record.
@@ -20,8 +21,11 @@ V1 uses an intentionally simple JSON store so the workflow is portable. A produc
 
 ## Future integrations
 - CRM/contact history
-- Gmail draft creation after human approval
+- Richer Zoho thread/contact synchronization
 - Client intake and contracts
 - Hosted private demo environments
 - Payment/invoice integration
 - Closed-loop conversion analytics
+
+## Mail trust boundary
+Inbound email is untrusted external content. Read/search workflows receive only read-only Zoho tools. Customer send/reply functions receive only the minimum mutation tool needed for the explicit action, and generated MCP URLs are configuration secrets rather than repository data.

@@ -10,6 +10,8 @@ export type LeadStage =
   | "won"
   | "lost";
 
+export type AgentRole = "manager" | "scout" | "auditor" | "designer" | "sales" | "accounting" | "legal";
+
 export interface AuditEvidence {
   checkedAt: string;
   reachable: boolean;
@@ -18,6 +20,7 @@ export interface AuditEvidence {
   responseMs?: number;
   https: boolean;
   title?: string;
+  contactEmail?: string;
   hasMetaDescription: boolean;
   hasViewportMeta: boolean;
   hasContactForm: boolean;
@@ -55,6 +58,29 @@ export interface SalesAssets {
   recommendedPackage: "Launch" | "Growth" | "Pro";
 }
 
+export interface OutreachSendState {
+  status: "pending" | "needs_review" | "sent";
+  attemptId: string;
+  startedAt: string;
+  to: string;
+  subject: string;
+  sentAt?: string;
+  providerCallId?: string;
+  error?: string;
+}
+
+export interface CommunicationRecord {
+  at: string;
+  channel: "zoho_email";
+  kind: "customer_outreach" | "agent_internal";
+  direction: "outbound";
+  to: string;
+  subject: string;
+  fromAgent?: AgentRole;
+  toAgent?: AgentRole;
+  providerCallId?: string;
+}
+
 export interface Lead {
   id: string;
   source: "google_places" | "fixture" | "manual";
@@ -65,6 +91,7 @@ export interface Lead {
   address?: string;
   phone?: string;
   website?: string;
+  contactEmail?: string;
   googleMapsUrl?: string;
   rating?: number;
   ratingCount?: number;
@@ -72,10 +99,13 @@ export interface Lead {
   updatedAt: string;
   stage: LeadStage;
   approvedForOutreach: boolean;
+  approvedOutreachGeneratedAt?: string;
+  outreachSend?: OutreachSendState;
   audit?: AuditEvidence;
   score?: OpportunityScore;
   salesAssets?: SalesAssets;
   demoPath?: string;
+  communications?: CommunicationRecord[];
   notes: string[];
 }
 
