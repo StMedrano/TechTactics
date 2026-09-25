@@ -2,6 +2,7 @@
 import { auditAll, approveLead, generateForLead, qualifyAll, setLeadStage } from "./pipeline.js";
 import { sendAgentEmail, sendApprovedOutreach, setLeadContactEmail } from "./communications.js";
 import { readZohoMail, replyZohoEmail, zohoMailStatus } from "./zoho.js";
+import { readZohoBooks, zohoBooksStatus } from "./books.js";
 import { buildReport } from "./report.js";
 import { scoutAndStore } from "./scout.js";
 import { seedFixtures } from "./seed.js";
@@ -75,6 +76,12 @@ Commands:
 
   agent-mail --from sales --to manager --subject "<subject>" --body "<text>"
       Send one internal role-to-role message to a configured agent mailbox.
+
+  books-status
+      Verify the Accounting/Tax assistant's read-only Zoho Books MCP connection.
+
+  books-read --task "<request>"
+      Read/analyze accounting data through the configured read-only Zoho Books tool allow-list.
 
   report
       Print pipeline metrics and top opportunities.
@@ -192,6 +199,18 @@ async function main(): Promise<void> {
     const body = value("--body");
     if (!from || !to || !subject || !body) throw new Error("--from, --to, --subject, and --body are required.");
     console.log((await sendAgentEmail(from, to, subject, body)).summary);
+    return;
+  }
+
+  if (command === "books-status") {
+    console.log(await zohoBooksStatus());
+    return;
+  }
+
+  if (command === "books-read") {
+    const task = value("--task");
+    if (!task) throw new Error("--task is required.");
+    console.log(await readZohoBooks(task));
     return;
   }
 
