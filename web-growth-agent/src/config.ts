@@ -28,6 +28,7 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
   scoutModel: process.env.WGA_SCOUT_MODEL?.trim() || "gemini-3.5-flash-lite",
+  mcpModel: process.env.WGA_MCP_MODEL?.trim() || "gemini-3.8-flash",
   scoutSource: process.env.WGA_SCOUT_SOURCE?.trim().toLowerCase() || "auto",
   overpassUrls: csv(process.env.WGA_OVERPASS_URLS, overpassDefaults),
   nominatimUrl: process.env.WGA_NOMINATIM_URL?.trim() || "https://nominatim.openstreetmap.org/search",

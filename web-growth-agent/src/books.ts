@@ -28,25 +28,55 @@ function readTool(): any {
     type: "mcp_server",
     name: "zoho_books",
     url: config.zohoBooksMcpUrl,
-    allowed_tools: config.zohoBooksReadTools
+    allowed_tools: [{ mode: "any", tools: [...config.zohoBooksReadTools] }]
   };
+}
+
+function toolKey(name: string): string {
+  let value = String(name || "").trim();
+
+  if (value.includes(":")) {
+    value = value.split(":").pop() || value;
+  }
+
+  value = value.replace(/^ZohoBooks_/i, "");
+
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function assertReadOnlyCalls(interaction: any): void {
   const calls = Array.isArray(interaction?.steps)
-    ? interaction.steps.filter((step: McpStep) => step?.type === "mcp_server_tool_call")
+    ? interaction.steps.filter(
+        (step: McpStep) => step?.type === "mcp_server_tool_call"
+      )
     : [];
-  if (!calls.length) throw new Error("Zoho Books MCP did not execute a configured read-only tool.");
-  const allowed = new Set(config.zohoBooksReadTools.map((name) => name.toLowerCase()));
-  const unexpected = calls.find((call: McpStep) => !allowed.has(String(call.name || "").toLowerCase()));
+
+  if (!calls.length) {
+    throw new Error(
+      "Zoho Books MCP did not execute a configured read-only tool."
+    );
+  }
+
+  const allowed = new Set(
+    config.zohoBooksReadTools.map(toolKey)
+  );
+
+  const unexpected = calls.find(
+    (call: McpStep) =>
+      !allowed.has(toolKey(String(call.name || "")))
+  );
+
   if (unexpected) {
-    throw new Error("Zoho Books MCP executed an unexpected tool: " + String(unexpected.name || "unknown"));
+    throw new Error(
+      "Zoho Books MCP executed an unexpected tool: " +
+      String(unexpected.name || "unknown")
+    );
   }
 }
 
 async function runReadOnly(input: string): Promise<string> {
   const interaction = await client().interactions.create({
-    model: config.geminiModel,
+    model: config.mcpModel,
     input,
     tools: [readTool()] as any
   });
@@ -55,10 +85,81 @@ async function runReadOnly(input: string): Promise<string> {
 }
 
 export async function zohoBooksStatus(): Promise<string> {
-  return runReadOnly(
-    "Use one or more configured read-only Zoho Books tools to confirm access to the organization. " +
-    "Do not create, update, delete, reconcile, send, pay, transfer, file, submit, or otherwise mutate financial data. " +
-    "Return a short connection/accounting-data summary."
+  if (!config.zohoBooksMcpUrl) {
+    throw new Error("ZOHO_BOOKS_MCP_URL is not configured.");
+  }
+
+  if (!config.zohoBooksReadTools.length) {
+    throw new Error("WGA_ZOHO_BOOKS_READ_TOOLS is empty.");
+  }
+
+  const response = await fetch(config.zohoBooksMcpUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream"
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: {}
+    })
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      "Zoho Books MCP connection failed: HTTP " +
+      response.status +
+      " " +
+      response.statusText
+    );
+  }
+
+  let payload: any;
+
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    const dataLine = text
+      .split("\n")
+      .find((line) => line.startsWith("data:"));
+
+    if (!dataLine) {
+      throw new Error("Zoho Books MCP returned an unreadable response.");
+    }
+
+    payload = JSON.parse(dataLine.slice(5).trim());
+  }
+
+  const tools = Array.isArray(payload?.result?.tools)
+    ? payload.result.tools
+    : [];
+
+  const exposed = new Set(
+    tools.map((tool: any) =>
+      String(tool?.name || "").toLowerCase()
+    )
+  );
+
+  const available = config.zohoBooksReadTools.filter((name) =>
+    exposed.has(name.toLowerCase())
+  );
+
+  if (!available.length) {
+    throw new Error(
+      "Zoho Books MCP authenticated, but none of the configured read-only tools are available."
+    );
+  }
+
+  return (
+    "Zoho Books MCP authenticated successfully; " +
+    available.length +
+    "/" +
+    config.zohoBooksReadTools.length +
+    " configured read-only tools are available."
   );
 }
 
