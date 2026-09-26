@@ -12,12 +12,19 @@ function optional(value: string | undefined): string | undefined {
   return trimmed || undefined;
 }
 
+function positiveNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
-  scoutModel: process.env.WGA_SCOUT_MODEL?.trim() || "gemini-2.5-flash-lite",
+  scoutModel: process.env.WGA_SCOUT_MODEL?.trim() || "gemini-3.5-flash-lite",
   scoutSource: process.env.WGA_SCOUT_SOURCE?.trim().toLowerCase() || "auto",
   overpassUrl: process.env.WGA_OVERPASS_URL?.trim() || "https://overpass-api.de/api/interpreter",
+  nominatimUrl: process.env.WGA_NOMINATIM_URL?.trim() || "https://nominatim.openstreetmap.org/search",
+  osmRadiusMeters: positiveNumber(process.env.WGA_OSM_RADIUS_METERS, 25000),
   zohoMcpUrl: process.env.ZOHO_MCP_URL?.trim() || "",
   zohoBooksMcpUrl: process.env.ZOHO_BOOKS_MCP_URL?.trim() || "",
   zohoBooksReadTools: csv(process.env.WGA_ZOHO_BOOKS_READ_TOOLS, []),
