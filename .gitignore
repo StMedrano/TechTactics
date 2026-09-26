@@ -38,3 +38,6 @@ Thumbs.db
 .idea/
 *.user
 *.suo
+
+# Local Web Growth Agent data backups
+web-growth-agent/data/*.backup.*
