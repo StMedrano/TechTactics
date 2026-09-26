@@ -37,6 +37,14 @@ describe("Web Growth Command Center", () => {
     expect(html).toContain("Integration Health");
   });
 
+  it("uses the TechTactics rebrand logo with a local-style fallback mark", () => {
+    const html = renderDashboard([lead]);
+
+    expect(html).toContain("techtactics-logo.png");
+    expect(html).toContain('class="brand-logo"');
+    expect(html).toContain('class="brand-mark brand-fallback"');
+  });
+
   it("renders dedicated mobile lead cards instead of forcing the desktop table to scroll", () => {
     const html = renderDashboard([lead]);
 
