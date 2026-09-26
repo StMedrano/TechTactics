@@ -59,7 +59,7 @@ describe("reference Web Growth Command Center UI", () => {
       "audit-demo-grid",
       "outreach-grid"
     ]) {
-      expect(html).toContain(`class=\"${klass}`);
+      expect(html).toMatch(new RegExp(`class="[^"]*\\b${klass}\\b[^"]*"`));
     }
 
     for (const label of ["Overview", "Pipeline", "Leads", "Agents", "Inbox", "Accounting", "Legal", "Integrations", "Settings"]) {
