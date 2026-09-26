@@ -65,7 +65,7 @@ describe("approved Web Growth Command Center UI", () => {
     expect(html).toContain("@media(max-width:760px)");
     expect(html).toContain(".lead-table{display:none}");
     expect(html).toContain(".mobile-leads{display:grid");
-    expect(html).toContain(".mobile-bottom-nav{display:flex");
+    expect(html).toContain(".mobile-bottom-nav{position:fixed;display:flex");
   });
 
   it("keeps production outreach controls in the approved visual system", () => {
