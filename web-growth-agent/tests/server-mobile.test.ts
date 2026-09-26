@@ -31,7 +31,7 @@ describe("mobile dashboard", () => {
     expect(html).toContain("desktop-table");
     expect(html).toContain("@media(max-width:760px)");
     expect(html).toContain(".desktop-table{display:none}");
-    expect(html).toContain(".mobile-leads{display:grid}");
+    expect(html).toContain(".mobile-leads{display:grid");
   });
 
   it("renders mobile actions as full-width controls", () => {
