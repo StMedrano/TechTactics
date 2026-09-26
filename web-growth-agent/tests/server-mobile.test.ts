@@ -23,22 +23,31 @@ const lead: Lead = {
   notes: []
 };
 
-describe("Web Growth Command Center", () => {
-  it("renders the approved command-center navigation and operating workflow", () => {
+describe("approved Web Growth Command Center UI", () => {
+  it("renders the approved high-fidelity dashboard shell and workflow", () => {
     const html = renderDashboard([lead]);
 
+    expect(html).toContain('class="app"');
+    expect(html).toContain('class="sidebar"');
+    expect(html).toContain('class="top-actions"');
+    expect(html).toContain('class="workflow"');
+    expect(html).toContain('class="metrics"');
+    expect(html).toContain('class="grid-top"');
+    expect(html).toContain('class="pipeline-rail"');
+    expect(html).toContain('class="mobile-bottom-nav"');
+
     for (const label of ["Overview", "Pipeline", "Leads", "Agents", "Inbox", "Accounting", "Legal", "Integrations"]) {
-      expect(html).toContain(`>${label}<`);
+      expect(html).toContain(label);
     }
     for (const stage of ["Find", "Audit", "Demo", "Approve", "Contact", "Close"]) {
       expect(html).toContain(`>${stage}<`);
     }
     expect(html).toContain("Web Growth Command Center");
-    expect(html).toContain("Agent Operations");
-    expect(html).toContain("Integration Health");
+    expect(html).toContain("Agent operations");
+    expect(html).toContain("Integration health");
   });
 
-  it("uses the TechTactics rebrand logo with a local-style fallback mark", () => {
+  it("uses the TechTactics rebrand logo with a fallback mark", () => {
     const html = applyBrandLogo(renderDashboard([lead]));
 
     expect(html).toContain("techtactics-logo.png");
@@ -46,22 +55,25 @@ describe("Web Growth Command Center", () => {
     expect(html).toContain('class="brand-mark brand-fallback"');
   });
 
-  it("renders dedicated mobile lead cards instead of forcing the desktop table to scroll", () => {
+  it("renders the approved desktop lead table and dedicated mobile cards", () => {
     const html = renderDashboard([lead]);
 
+    expect(html).toContain('class="lead-table"');
     expect(html).toContain('class="mobile-leads"');
     expect(html).toContain('class="lead-card"');
-    expect(html).toContain("desktop-table");
+    expect(html).toContain('class="lead-card-actions"');
     expect(html).toContain("@media(max-width:760px)");
-    expect(html).toContain(".desktop-table{display:none}");
+    expect(html).toContain(".lead-table{display:none}");
     expect(html).toContain(".mobile-leads{display:grid");
+    expect(html).toContain(".mobile-bottom-nav{position:fixed;display:flex");
   });
 
-  it("renders mobile actions as full-width controls", () => {
+  it("keeps production outreach controls in the approved visual system", () => {
     const html = renderDashboard([lead]);
 
-    expect(html).toContain(".lead-actions button{width:100%");
     expect(html).toContain("Send via Zoho");
     expect(html).toContain("Mark contacted manually");
+    expect(html).toContain("Nothing is sent automatically");
+    expect(html).toContain("min-height:44px");
   });
 });
