@@ -22,7 +22,21 @@ const lead: Lead = {
   notes: []
 };
 
-describe("mobile dashboard", () => {
+describe("Web Growth Command Center", () => {
+  it("renders the approved command-center navigation and operating workflow", () => {
+    const html = renderDashboard([lead]);
+
+    for (const label of ["Overview", "Pipeline", "Leads", "Agents", "Inbox", "Accounting", "Legal", "Integrations"]) {
+      expect(html).toContain(`>${label}<`);
+    }
+    for (const stage of ["Find", "Audit", "Demo", "Approve", "Contact", "Close"]) {
+      expect(html).toContain(`>${stage}<`);
+    }
+    expect(html).toContain("Web Growth Command Center");
+    expect(html).toContain("Agent Operations");
+    expect(html).toContain("Integration Health");
+  });
+
   it("renders dedicated mobile lead cards instead of forcing the desktop table to scroll", () => {
     const html = renderDashboard([lead]);
 
