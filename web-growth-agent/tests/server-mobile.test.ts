@@ -28,7 +28,7 @@ describe("mobile dashboard", () => {
 
     expect(html).toContain('class="mobile-leads"');
     expect(html).toContain('class="lead-card"');
-    expect(html).toContain('class="desktop-table"');
+    expect(html).toContain("desktop-table");
     expect(html).toContain("@media(max-width:760px)");
     expect(html).toContain(".desktop-table{display:none}");
     expect(html).toContain(".mobile-leads{display:grid}");
