@@ -2,24 +2,40 @@
 
 ## Daily workflow
 
-### 1. Scout one market deliberately
+### 1. Keep production data clean
+If synthetic evaluation records were ever loaded into the same store, remove only those fixtures:
+
+```bash
+npm run wga -- purge-fixtures
+```
+
+Real OSM/Gemini leads are preserved.
+
+### 2. Scout one market deliberately
+
 ```bash
 npm run wga -- scout --market "Prairieville, LA" --category plumber --category electrician --max-results 10 --source auto
 ```
 
-`auto` uses OpenStreetMap first. The market is resolved to coordinates once per process and Overpass searches within `WGA_OSM_RADIUS_METERS` (25 km by default). Gemini web search is attempted only when OSM returns no leads.
+`auto` resolves the market to coordinates, tries the configured Overpass endpoints in order, and collects OSM results within `WGA_OSM_RADIUS_METERS`. If OSM returns fewer leads than requested, Gemini can supplement the remaining slots. Results are deduplicated before storage.
 
-### 2. Audit and score
+If the first Overpass server returns a 504 or otherwise fails, the next `WGA_OVERPASS_URLS` endpoint is tried automatically.
+
+### 3. Audit and score
+
 ```bash
 npm run wga -- audit --all
 npm run wga -- qualify --min-score 35
 npm run wga -- report
 ```
 
-### 3. Select a prospect
-Review the dashboard and evidence. Do not generate demos for every lead automatically.
+Do not lower the qualification threshold simply to create qualified leads. A low score means the current evidence did not show enough website opportunity.
 
-### 4. Generate a concept
+### 4. Select a prospect
+Review the Command Center and its evidence. Do not generate demos for every lead automatically.
+
+### 5. Generate a concept
+
 ```bash
 npm run wga -- generate --lead <id>
 ```
@@ -30,52 +46,53 @@ Inspect:
 - `artifacts/<id>/proposal.md`
 - `artifacts/<id>/demo/index.html`
 
-### 5. Approve
-Only after checking every factual claim:
+### 6. Approve, then contact
+Only after checking factual claims:
+
 ```bash
 npm run wga -- approve --lead <id>
-```
-
-### 6. Contact after approval
-For Zoho Mail, explicitly send the reviewed draft:
-```bash
 npm run wga -- send --lead <id>
 ```
 
-For contact made outside the application, mark it manually:
+For contact made outside the application:
+
 ```bash
 npm run wga -- stage --lead <id> --to contacted
 ```
 
-Use `mail-read` to review incoming prospect mail and `mail-reply` only after the reply text has been reviewed. Continue with `responded`, `proposal`, then `won` or `lost`.
+## Scout behavior
 
-## Cost controls
-- Scouting requires an explicit market and category.
-- Default live search is capped at 10 results per category from the CLI.
-- `WGA_SCOUT_SOURCE=auto` is OSM-first, reducing Gemini search usage.
-- `WGA_SCOUT_MODEL` defaults to `gemini-3.5-flash-lite` only for the optional Gemini search attempt.
-- `GEMINI_MODEL` defaults to `gemini-3.5-flash-lite` for routine AI tasks.
-- Gemini `429 RESOURCE_EXHAUSTED` errors fall back to OSM rather than crashing the scout.
-- `WGA_OSM_RADIUS_METERS` controls the local search radius; increase it cautiously if a sparse market returns no OSM businesses.
-- OpenStreetMap is a best-effort discovery source and should not be treated as a complete business directory.
-- AI generation runs only for an explicitly selected lead.
+- `--source auto`: resilient OSM first; Gemini supplements a sparse result set when available.
+- `--source osm`: OSM only. If every configured endpoint fails, the command fails and does not silently invoke Gemini.
+- `--source gemini`: Gemini first; a Gemini quota condition may fall back to OSM.
+- OSM records with explicit `brand`/`network` metadata are excluded from local-independent prospecting.
+- Gemini is instructed to exclude chains, franchises, distributors, big-box retailers, and companies that do not actually perform the requested service.
+- Gemini `429 RESOURCE_EXHAUSTED` during supplementation preserves OSM leads already discovered.
 
 ## Sparse-market troubleshooting
-If a search returns zero leads:
-1. Retry with a broader radius, for example `WGA_OSM_RADIUS_METERS=40000`.
-2. Try a nearby larger market while keeping the same category.
-3. Use `--source gemini` only when Gemini Search quota is available.
-4. Treat a zero-result OSM query as incomplete coverage, not proof that there are no businesses.
+
+1. Keep `--source auto` for normal operation so a sparse OSM result can be supplemented.
+2. If the territory is legitimately wider, increase `WGA_OSM_RADIUS_METERS`, for example from 25000 to 40000.
+3. Search several service categories rather than repeatedly querying only one category.
+4. A zero-result or one-result OSM search means OSM coverage is sparse; it is not proof that the local market has no businesses.
+
+## Cost controls
+
+- Scouting requires an explicit market and category.
+- Live search is capped by `--max-results` (10 by default).
+- OSM is attempted before Gemini in auto mode.
+- Gemini is used only for the missing portion of a sparse OSM result set.
+- AI demo/proposal generation runs only for an explicitly selected lead.
 
 ## Ambiguous Zoho send recovery
-The application writes a durable send reservation before calling Zoho. If a timeout, process interruption, or storage issue leaves the attempt in `pending` or `needs_review`, do **not** retry automatically.
+The application writes a durable send reservation before calling Zoho. If a timeout, process interruption, or storage issue leaves an attempt ambiguous, do not retry automatically.
 
 1. Check the Zoho Sent folder for the exact recipient/subject.
-2. If the message is present:
+2. If present:
    ```bash
    npm run wga -- reconcile-send --lead <id> --result sent
    ```
-3. If the message is definitely absent:
+3. If definitely absent:
    ```bash
    npm run wga -- reconcile-send --lead <id> --result not-sent
    ```
