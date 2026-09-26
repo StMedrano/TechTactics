@@ -14,7 +14,7 @@ export interface ScoutOptions {
   source?: ScoutSource;
 }
 
-interface Candidate {
+export interface ScoutCandidate {
   source: LeadSource;
   sourceId: string;
   businessName: string;
@@ -29,6 +29,18 @@ interface Candidate {
   notes: string[];
 }
 
+export interface Coordinates {
+  lat: number;
+  lon: number;
+}
+
+export interface ScoutDependencies {
+  osm: (options: ScoutOptions) => Promise<ScoutCandidate[]>;
+  gemini: (options: ScoutOptions) => Promise<ScoutCandidate[]>;
+  fallbackOnGeminiQuota?: boolean;
+  geminiEnabled?: boolean;
+}
+
 const GeminiBusinessSchema = z.object({
   businessName: z.string().min(1),
   category: z.string().optional(),
@@ -41,6 +53,36 @@ const GeminiBusinessSchema = z.object({
 const GeminiResponseSchema = z.object({
   businesses: z.array(GeminiBusinessSchema)
 });
+
+interface OverpassElement {
+  type: "node" | "way" | "relation";
+  id: number;
+  tags?: Record<string, string>;
+}
+
+interface OverpassResponse {
+  elements?: OverpassElement[];
+}
+
+interface NominatimResult {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+}
+
+const OSM_FILTERS: Record<string, string[]> = {
+  plumber: ['["craft"="plumber"]'],
+  hvac: ['["craft"="hvac"]', '["shop"="heating"]'],
+  electrician: ['["craft"="electrician"]'],
+  landscaper: ['["craft"="landscaper"]'],
+  "roofing contractor": ['["craft"="roofer"]'],
+  "auto repair": ['["shop"="car_repair"]'],
+  salon: ['["shop"="hairdresser"]', '["shop"="beauty"]'],
+  barber: ['["shop"="hairdresser"]'],
+  accountant: ['["office"="accountant"]']
+};
+
+const marketCoordinateCache = new Map<string, Coordinates>();
 
 function extractJson(text: string): unknown {
   const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
@@ -65,6 +107,21 @@ function normalize(value: string | undefined): string {
   return (value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function errorText(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+export function isGeminiQuotaError(error: unknown): boolean {
+  const text = errorText(error);
+  return /RESOURCE_EXHAUSTED|\b429\b|exceeded your current quota/i.test(text);
+}
+
 function leadFingerprint(lead: Pick<Lead, "businessName" | "market" | "website">): string {
   const website = safeUrl(lead.website);
   if (website) {
@@ -77,7 +134,7 @@ function leadFingerprint(lead: Pick<Lead, "businessName" | "market" | "website">
   return "name:" + normalize(lead.businessName) + "|" + normalize(lead.market);
 }
 
-function candidateFingerprint(candidate: Candidate): string {
+function candidateFingerprint(candidate: ScoutCandidate): string {
   return leadFingerprint(candidate);
 }
 
@@ -94,7 +151,7 @@ function groundingMetadata(response: any): { urls: string[]; queries: string[] }
   return { urls: unique(urls), queries: unique(queries) };
 }
 
-export async function searchGeminiWeb(options: ScoutOptions): Promise<Candidate[]> {
+export async function searchGeminiWeb(options: ScoutOptions): Promise<ScoutCandidate[]> {
   if (!config.geminiApiKey) {
     throw new Error("GEMINI_API_KEY is required for Gemini web scouting.");
   }
@@ -163,34 +220,8 @@ Rules:
           ? "Website was identified during grounded web discovery and must still be verified by the auditor."
           : "No own website was confidently identified during grounded web discovery; this is not proof that no website exists."
       ]
-    } satisfies Candidate;
+    } satisfies ScoutCandidate;
   });
-}
-
-interface OverpassElement {
-  type: "node" | "way" | "relation";
-  id: number;
-  tags?: Record<string, string>;
-}
-
-interface OverpassResponse {
-  elements?: OverpassElement[];
-}
-
-const OSM_FILTERS: Record<string, string[]> = {
-  plumber: ['["craft"="plumber"]'],
-  hvac: ['["craft"="hvac"]', '["shop"="heating"]'],
-  electrician: ['["craft"="electrician"]'],
-  landscaper: ['["craft"="landscaper"]'],
-  "roofing contractor": ['["craft"="roofer"]'],
-  "auto repair": ['["shop"="car_repair"]'],
-  salon: ['["shop"="hairdresser"]', '["shop"="beauty"]'],
-  barber: ['["shop"="hairdresser"]'],
-  accountant: ['["office"="accountant"]']
-};
-
-function escapeOverpass(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function osmAddress(tags: Record<string, string>): string | undefined {
@@ -199,31 +230,73 @@ function osmAddress(tags: Record<string, string>): string | undefined {
   return [street, locality].filter(Boolean).join(", ") || undefined;
 }
 
-function buildOverpassQuery(options: ScoutOptions): string {
-  const city = options.market.split(",")[0]?.trim() || options.market.trim();
+export function buildOverpassAroundQuery(options: ScoutOptions, coordinates: Coordinates, radiusMeters: number): string {
   const filters = OSM_FILTERS[options.category.toLowerCase()];
   if (!filters?.length) {
     throw new Error(
       `OpenStreetMap fallback does not yet have a tag mapping for category "${options.category}". Use Gemini scouting or add an OSM tag mapping.`
     );
   }
-  const union = filters.map((filter) => `nwr${filter}(area.searchArea);`).join("\n  ");
+
+  const radius = Math.round(Math.min(Math.max(radiusMeters, 1000), 100000));
+  const union = filters
+    .map((filter) => `nwr${filter}(around:${radius},${coordinates.lat},${coordinates.lon});`)
+    .join("\n  ");
+
   return `[out:json][timeout:25];
-area["name"="${escapeOverpass(city)}"]["boundary"="administrative"]->.searchArea;
 (
   ${union}
 );
 out center;`;
 }
 
-export async function searchOverpass(options: ScoutOptions): Promise<Candidate[]> {
+export async function resolveMarketCoordinates(market: string): Promise<Coordinates> {
+  const cacheKey = normalize(market);
+  const cached = marketCoordinateCache.get(cacheKey);
+  if (cached) return cached;
+
+  const query = /\b(?:usa|united states)\b/i.test(market) ? market : `${market}, USA`;
+  const url = new URL(config.nominatimUrl);
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+
+  const response = await fetch(url, {
+    headers: {
+      "Accept-Language": "en",
+      "User-Agent": "TechTactics-WebGrowthScout/0.3"
+    },
+    signal: AbortSignal.timeout(10_000)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Market geocoding failed (${response.status}): ${(await response.text()).slice(0, 300)}`);
+  }
+
+  const results = (await response.json()) as NominatimResult[];
+  const first = results[0];
+  const lat = Number(first?.lat);
+  const lon = Number(first?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    throw new Error(`Could not resolve market coordinates for ${market}.`);
+  }
+
+  const coordinates = { lat, lon };
+  marketCoordinateCache.set(cacheKey, coordinates);
+  return coordinates;
+}
+
+export async function searchOverpass(options: ScoutOptions): Promise<ScoutCandidate[]> {
+  const coordinates = await resolveMarketCoordinates(options.market);
+  const query = buildOverpassAroundQuery(options, coordinates, config.osmRadiusMeters);
+
   const response = await fetch(config.overpassUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": "TechTactics-WebGrowthScout/0.2"
+      "User-Agent": "TechTactics-WebGrowthScout/0.3"
     },
-    body: "data=" + encodeURIComponent(buildOverpassQuery(options)),
+    body: "data=" + encodeURIComponent(query),
     signal: AbortSignal.timeout(20_000)
   });
 
@@ -233,7 +306,7 @@ export async function searchOverpass(options: ScoutOptions): Promise<Candidate[]
 
   const data = (await response.json()) as OverpassResponse;
   const maxResults = Math.min(Math.max(options.maxResults ?? 10, 1), 25);
-  const candidates: Candidate[] = [];
+  const candidates: ScoutCandidate[] = [];
 
   for (const element of data.elements ?? []) {
     const tags = element.tags ?? {};
@@ -253,6 +326,7 @@ export async function searchOverpass(options: ScoutOptions): Promise<Candidate[]
       sourceUrls: [`https://www.openstreetmap.org/${element.type}/${element.id}`],
       websiteDiscoveryStatus: website ? "found" : "not_found",
       notes: [
+        `Discovered in OpenStreetMap within approximately ${Math.round(config.osmRadiusMeters / 1000)} km of ${options.market}.`,
         website
           ? "Website URL came from OpenStreetMap tags and must still be verified by the auditor."
           : "No website tag was present in this OpenStreetMap record; this is not proof that no website exists."
@@ -263,7 +337,51 @@ export async function searchOverpass(options: ScoutOptions): Promise<Candidate[]
   return candidates;
 }
 
-function candidateToLead(candidate: Candidate): Lead {
+export async function discoverWithFallback(
+  options: ScoutOptions,
+  dependencies: ScoutDependencies
+): Promise<ScoutCandidate[]> {
+  const source = options.source ?? "auto";
+  if (!["auto", "gemini", "osm"].includes(source)) {
+    throw new Error(`Unsupported scout source: ${source}`);
+  }
+
+  if (source === "osm") return dependencies.osm(options);
+
+  if (source === "gemini") {
+    try {
+      return await dependencies.gemini(options);
+    } catch (error) {
+      if (dependencies.fallbackOnGeminiQuota && isGeminiQuotaError(error)) {
+        console.warn("Gemini scout quota exhausted; using OpenStreetMap fallback.");
+        return dependencies.osm(options);
+      }
+      throw error;
+    }
+  }
+
+  try {
+    const osmResults = await dependencies.osm(options);
+    if (osmResults.length) return osmResults;
+  } catch (error) {
+    console.warn("OpenStreetMap scout failed; trying Gemini:", errorText(error));
+  }
+
+  if (dependencies.geminiEnabled === false) return [];
+
+  try {
+    return await dependencies.gemini(options);
+  } catch (error) {
+    if (isGeminiQuotaError(error)) {
+      console.warn("Gemini scout quota exhausted and OpenStreetMap did not return leads for this search.");
+      return [];
+    }
+    console.warn("Gemini scout failed after OpenStreetMap returned no leads:", errorText(error));
+    return [];
+  }
+}
+
+function candidateToLead(candidate: ScoutCandidate): Lead {
   const now = nowIso();
   return {
     id: stableId("lead", candidate.source + ":" + candidate.sourceId),
@@ -303,24 +421,17 @@ function mergeExisting(existing: Lead, discovered: Lead): Lead {
   };
 }
 
-async function discover(options: ScoutOptions): Promise<Candidate[]> {
+async function discover(options: ScoutOptions): Promise<ScoutCandidate[]> {
   const source = options.source ?? (config.scoutSource as ScoutSource);
-  if (!["auto", "gemini", "osm"].includes(source)) {
-    throw new Error(`Unsupported scout source: ${source}`);
-  }
-
-  if (source === "gemini") return searchGeminiWeb(options);
-  if (source === "osm") return searchOverpass(options);
-
-  if (config.geminiApiKey) {
-    try {
-      const web = await searchGeminiWeb(options);
-      if (web.length) return web;
-    } catch (error) {
-      console.warn("Gemini scout failed; trying OpenStreetMap fallback:", error instanceof Error ? error.message : error);
+  return discoverWithFallback(
+    { ...options, source },
+    {
+      osm: searchOverpass,
+      gemini: searchGeminiWeb,
+      fallbackOnGeminiQuota: true,
+      geminiEnabled: Boolean(config.geminiApiKey)
     }
-  }
-  return searchOverpass(options);
+  );
 }
 
 export async function scoutAndStore(options: ScoutOptions, store = new LeadStore()): Promise<Lead[]> {
