@@ -54,3 +54,11 @@ export async function seedFixtures(store = new LeadStore()): Promise<Lead[]> {
   for (const fixture of fixtures) await store.upsert(fixture);
   return fixtures;
 }
+
+export async function removeFixtureLeads(store = new LeadStore()): Promise<number> {
+  const all = await store.all();
+  const realLeads = all.filter((lead) => lead.source !== "fixture");
+  const removed = all.length - realLeads.length;
+  if (removed > 0) await store.replaceAll(realLeads);
+  return removed;
+}

@@ -60,7 +60,7 @@ interface OverpassElement {
   tags?: Record<string, string>;
 }
 
-interface OverpassResponse {
+export interface OverpassResponse {
   elements?: OverpassElement[];
 }
 
@@ -122,6 +122,15 @@ export function isGeminiQuotaError(error: unknown): boolean {
   return /RESOURCE_EXHAUSTED|\b429\b|exceeded your current quota/i.test(text);
 }
 
+export function isLikelyChainOsmTags(tags: Record<string, string>): boolean {
+  return Boolean(
+    tags.brand?.trim() ||
+    tags.network?.trim() ||
+    tags["brand:wikidata"]?.trim() ||
+    tags["network:wikidata"]?.trim()
+  );
+}
+
 function leadFingerprint(lead: Pick<Lead, "businessName" | "market" | "website">): string {
   const website = safeUrl(lead.website);
   if (website) {
@@ -136,6 +145,42 @@ function leadFingerprint(lead: Pick<Lead, "businessName" | "market" | "website">
 
 function candidateFingerprint(candidate: ScoutCandidate): string {
   return leadFingerprint(candidate);
+}
+
+function candidateMergeKey(candidate: ScoutCandidate): string {
+  return normalize(candidate.businessName) + "|" + normalize(candidate.market);
+}
+
+function mergeCandidate(existing: ScoutCandidate, incoming: ScoutCandidate): ScoutCandidate {
+  const website = existing.website ?? incoming.website;
+  return {
+    ...existing,
+    category: existing.category ?? incoming.category,
+    address: existing.address ?? incoming.address,
+    phone: existing.phone ?? incoming.phone,
+    website,
+    sourceUrls: unique([...(existing.sourceUrls ?? []), ...(incoming.sourceUrls ?? [])]),
+    discoveryQueries: unique([...(existing.discoveryQueries ?? []), ...(incoming.discoveryQueries ?? [])]),
+    websiteDiscoveryStatus: website ? "found" : existing.websiteDiscoveryStatus,
+    notes: unique([...(existing.notes ?? []), ...(incoming.notes ?? [])])
+  };
+}
+
+function mergeCandidateLists(primary: ScoutCandidate[], secondary: ScoutCandidate[], maxResults: number): ScoutCandidate[] {
+  const ordered: ScoutCandidate[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const candidate of [...primary, ...secondary]) {
+    const key = candidateMergeKey(candidate);
+    const index = indexByKey.get(key);
+    if (index === undefined) {
+      indexByKey.set(key, ordered.length);
+      ordered.push(candidate);
+    } else {
+      ordered[index] = mergeCandidate(ordered[index], candidate);
+    }
+    if (ordered.length >= maxResults && candidate === secondary[secondary.length - 1]) break;
+  }
+  return ordered.slice(0, maxResults);
 }
 
 function groundingMetadata(response: any): { urls: string[]; queries: string[] } {
@@ -176,7 +221,8 @@ This is lead discovery for a website-services company. Use Google Search and ret
 
 Rules:
 - Do not invent businesses, contact information, websites, services, ratings, or reviews.
-- Prefer independent/local businesses over national chains.
+- Return independent/local businesses only; exclude national chains, franchises, distributors, big-box retailers, and multi-state corporate networks.
+- The business must actually perform the requested category of service; suppliers and distributors are not service-business leads.
 - A social-media page or directory page is not the business's own website.
 - If no own website is confidently identified, omit "website"; do not guess.
 - Include at least one public source URL for each returned business when possible.
@@ -264,7 +310,7 @@ export async function resolveMarketCoordinates(market: string): Promise<Coordina
   const response = await fetch(url, {
     headers: {
       "Accept-Language": "en",
-      "User-Agent": "TechTactics-WebGrowthScout/0.3"
+      "User-Agent": "TechTactics-WebGrowthScout/0.4"
     },
     signal: AbortSignal.timeout(10_000)
   });
@@ -286,32 +332,46 @@ export async function resolveMarketCoordinates(market: string): Promise<Coordina
   return coordinates;
 }
 
+export async function requestOverpassJson(
+  query: string,
+  endpoints: string[],
+  fetchImpl: typeof fetch = fetch
+): Promise<OverpassResponse> {
+  const errors: string[] = [];
+  for (const endpoint of unique(endpoints.filter(Boolean))) {
+    try {
+      const response = await fetchImpl(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": "TechTactics-WebGrowthScout/0.4"
+        },
+        body: "data=" + encodeURIComponent(query),
+        signal: AbortSignal.timeout(20_000)
+      });
+      if (!response.ok) {
+        errors.push(`${endpoint}: HTTP ${response.status} ${(await response.text()).slice(0, 180)}`);
+        continue;
+      }
+      return (await response.json()) as OverpassResponse;
+    } catch (error) {
+      errors.push(`${endpoint}: ${errorText(error)}`);
+    }
+  }
+  throw new Error(`Overpass search failed across ${endpoints.length} endpoint(s): ${errors.join(" | ")}`);
+}
+
 export async function searchOverpass(options: ScoutOptions): Promise<ScoutCandidate[]> {
   const coordinates = await resolveMarketCoordinates(options.market);
   const query = buildOverpassAroundQuery(options, coordinates, config.osmRadiusMeters);
-
-  const response = await fetch(config.overpassUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent": "TechTactics-WebGrowthScout/0.3"
-    },
-    body: "data=" + encodeURIComponent(query),
-    signal: AbortSignal.timeout(20_000)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Overpass search failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
-  }
-
-  const data = (await response.json()) as OverpassResponse;
+  const data = await requestOverpassJson(query, config.overpassUrls);
   const maxResults = Math.min(Math.max(options.maxResults ?? 10, 1), 25);
   const candidates: ScoutCandidate[] = [];
 
   for (const element of data.elements ?? []) {
     const tags = element.tags ?? {};
     const name = tags.name?.trim();
-    if (!name) continue;
+    if (!name || isLikelyChainOsmTags(tags)) continue;
     const website = safeUrl(tags["contact:website"] || tags.website);
     const phone = tags["contact:phone"] || tags.phone;
     candidates.push({
@@ -342,6 +402,7 @@ export async function discoverWithFallback(
   dependencies: ScoutDependencies
 ): Promise<ScoutCandidate[]> {
   const source = options.source ?? "auto";
+  const maxResults = Math.min(Math.max(options.maxResults ?? 10, 1), 25);
   if (!["auto", "gemini", "osm"].includes(source)) {
     throw new Error(`Unsupported scout source: ${source}`);
   }
@@ -360,24 +421,27 @@ export async function discoverWithFallback(
     }
   }
 
+  let osmResults: ScoutCandidate[] = [];
   try {
-    const osmResults = await dependencies.osm(options);
-    if (osmResults.length) return osmResults;
+    osmResults = await dependencies.osm(options);
+    if (osmResults.length >= maxResults) return osmResults.slice(0, maxResults);
   } catch (error) {
     console.warn("OpenStreetMap scout failed; trying Gemini:", errorText(error));
   }
 
-  if (dependencies.geminiEnabled === false) return [];
+  if (dependencies.geminiEnabled === false) return osmResults.slice(0, maxResults);
 
   try {
-    return await dependencies.gemini(options);
+    const remaining = Math.max(1, maxResults - osmResults.length);
+    const geminiResults = await dependencies.gemini({ ...options, maxResults: remaining });
+    return mergeCandidateLists(osmResults, geminiResults, maxResults);
   } catch (error) {
     if (isGeminiQuotaError(error)) {
-      console.warn("Gemini scout quota exhausted and OpenStreetMap did not return leads for this search.");
-      return [];
+      console.warn("Gemini scout quota exhausted; keeping any OpenStreetMap leads already found.");
+      return osmResults.slice(0, maxResults);
     }
-    console.warn("Gemini scout failed after OpenStreetMap returned no leads:", errorText(error));
-    return [];
+    console.warn("Gemini scout failed after OpenStreetMap discovery:", errorText(error));
+    return osmResults.slice(0, maxResults);
   }
 }
 
