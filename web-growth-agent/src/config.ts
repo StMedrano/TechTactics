@@ -17,12 +17,19 @@ function positiveNumber(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+const overpassDefaults = Array.from(new Set([
+  process.env.WGA_OVERPASS_URL?.trim(),
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+].filter((value): value is string => Boolean(value))));
+
 export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
   scoutModel: process.env.WGA_SCOUT_MODEL?.trim() || "gemini-3.5-flash-lite",
   scoutSource: process.env.WGA_SCOUT_SOURCE?.trim().toLowerCase() || "auto",
-  overpassUrl: process.env.WGA_OVERPASS_URL?.trim() || "https://overpass-api.de/api/interpreter",
+  overpassUrls: csv(process.env.WGA_OVERPASS_URLS, overpassDefaults),
   nominatimUrl: process.env.WGA_NOMINATIM_URL?.trim() || "https://nominatim.openstreetmap.org/search",
   osmRadiusMeters: positiveNumber(process.env.WGA_OSM_RADIUS_METERS, 25000),
   zohoMcpUrl: process.env.ZOHO_MCP_URL?.trim() || "",
