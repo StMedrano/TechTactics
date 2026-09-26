@@ -13,7 +13,10 @@ export async function startServer(store = new LeadStore()): Promise<void> {
   const app = express();
   app.use(express.json());
 
-  app.get("/", async (_req, res) => res.type("html").send(renderDashboard(await store.all())));
+  app.get("/", async (req, res) => {
+    const selectedLeadId = typeof req.query.lead === "string" ? req.query.lead : undefined;
+    res.type("html").send(renderDashboard(await store.all(), selectedLeadId));
+  });
   app.get("/api/leads", async (_req, res) => res.json(await store.all()));
   app.get("/api/report", async (_req, res) => res.json(buildReport(await store.all())));
 
