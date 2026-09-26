@@ -11,28 +11,32 @@ V1 is designed to run as a private TechTactics operations tool.
 
 ## Gemini model routing
 
-The Web Growth Agent uses Google's `@google/genai` SDK with two configurable model roles:
+The Web Growth Agent uses Google's `@google/genai` SDK. Configure:
 
 ```env
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-3.5-flash-lite
-WGA_SCOUT_MODEL=gemini-2.5-flash-lite
+WGA_SCOUT_MODEL=gemini-3.5-flash-lite
 ```
 
-`GEMINI_MODEL` handles routine high-volume AI tasks such as sales assets, summaries, and Zoho orchestration.
+`GEMINI_MODEL` handles routine AI tasks such as sales assets, summaries, and Zoho orchestration.
 
-`WGA_SCOUT_MODEL` is reserved for lead discovery with Google Search grounding so scouting uses the model/quota pool intended for that workload.
+`WGA_SCOUT_MODEL` is used only when Gemini web scouting is attempted. The default `auto` discovery mode is intentionally OpenStreetMap-first so normal scouting can continue even when Gemini search quota is unavailable.
 
 For discovery:
 
 ```env
 WGA_SCOUT_SOURCE=auto
 WGA_OVERPASS_URL=https://overpass-api.de/api/interpreter
+WGA_NOMINATIM_URL=https://nominatim.openstreetmap.org/search
+WGA_OSM_RADIUS_METERS=25000
 ```
 
-`auto` tries Gemini Search first and falls back to OpenStreetMap Overpass for supported categories. No Google Maps/Places API key is required.
+`auto` resolves the requested market to coordinates, queries OpenStreetMap within the configured radius, and only attempts Gemini web search if OSM returns no leads. A Gemini `429 RESOURCE_EXHAUSTED` condition is treated as a quota condition and does not crash the scouting command.
 
-If no Gemini key is configured, deterministic fallback sales assets remain available, while `--source osm` can still scout supported categories without Gemini.
+No Google Maps/Places API key is required.
+
+If no Gemini key is configured, deterministic fallback sales assets remain available and OSM scouting still works for supported categories.
 
 ## Docker
 
@@ -47,6 +51,10 @@ docker compose logs -f web-growth-agent
 ```
 
 The default Compose file publishes port `4317` for initial LAN verification. Once Nginx Proxy Manager shares a Docker network with the service, the host port can be removed and NPM can proxy directly to `web-growth-agent:4317`.
+
+## Mobile dashboard
+
+The dashboard keeps the full desktop table on larger screens and switches to dedicated lead cards below 760px. Mobile cards use readable evidence sections and full-width action buttons instead of forcing a wide table to scroll horizontally.
 
 ## Persistent state
 The Compose deployment mounts:
