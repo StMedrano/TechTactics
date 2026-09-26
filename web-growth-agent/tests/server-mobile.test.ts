@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { applyBrandLogo } from "../src/brand.js";
 import { renderDashboard } from "../src/server.js";
 import type { Lead } from "../src/types.js";
 
@@ -35,6 +36,14 @@ describe("Web Growth Command Center", () => {
     expect(html).toContain("Web Growth Command Center");
     expect(html).toContain("Agent Operations");
     expect(html).toContain("Integration Health");
+  });
+
+  it("uses the TechTactics rebrand logo with a local-style fallback mark", () => {
+    const html = applyBrandLogo(renderDashboard([lead]));
+
+    expect(html).toContain("techtactics-logo.png");
+    expect(html).toContain('class="brand-logo"');
+    expect(html).toContain('class="brand-mark brand-fallback"');
   });
 
   it("renders dedicated mobile lead cards instead of forcing the desktop table to scroll", () => {

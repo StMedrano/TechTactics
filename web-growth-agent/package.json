@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "start": "node dist/src/cli.js serve",
+    "start": "node --import ./dist/src/brand.js dist/src/cli.js serve",
     "wga": "tsx src/cli.ts"
   },
   "dependencies": {
