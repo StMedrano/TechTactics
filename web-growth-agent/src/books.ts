@@ -28,7 +28,7 @@ function readTool(): any {
     type: "mcp_server",
     name: "zoho_books",
     url: config.zohoBooksMcpUrl,
-    allowed_tools: config.zohoBooksReadTools
+    allowed_tools: [{ mode: "any", tools: [...config.zohoBooksReadTools] }]
   };
 }
 
@@ -46,7 +46,7 @@ function assertReadOnlyCalls(interaction: any): void {
 
 async function runReadOnly(input: string): Promise<string> {
   const interaction = await client().interactions.create({
-    model: config.geminiModel,
+    model: config.mcpModel,
     input,
     tools: [readTool()] as any
   });
