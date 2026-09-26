@@ -1,4 +1,5 @@
 import express from "express";
+import "./brand.js";
 import { config } from "./config.js";
 import { approveLead, setLeadStage } from "./pipeline.js";
 import { sendApprovedOutreach } from "./communications.js";
