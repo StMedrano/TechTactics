@@ -5,7 +5,7 @@ import { readZohoMail, replyZohoEmail, zohoMailStatus } from "./zoho.js";
 import { readZohoBooks, zohoBooksStatus } from "./books.js";
 import { buildReport } from "./report.js";
 import { scoutAndStore } from "./scout.js";
-import { seedFixtures } from "./seed.js";
+import { removeFixtureLeads, seedFixtures } from "./seed.js";
 import { startServer } from "./server.js";
 import { LeadStore } from "./store.js";
 import type { AgentRole, LeadStage } from "./types.js";
@@ -38,8 +38,11 @@ Commands:
   seed
       Load synthetic evaluation leads.
 
-  scout --market "Prairieville, LA" --category plumber [--category electrician] [--max-results 10]
-      Discover businesses with Google Places. A market and at least one category are required to avoid accidental broad API usage.
+  purge-fixtures
+      Remove only synthetic fixture leads from the active lead store. Real discovered leads are preserved.
+
+  scout --market "Prairieville, LA" --category plumber [--category electrician] [--max-results 10] [--source auto|osm|gemini]
+      Discover local businesses. Auto mode tries resilient OSM discovery first and supplements sparse results with Gemini when available.
 
   audit --all
       Audit all active leads and calculate evidence-based scores.
@@ -90,7 +93,7 @@ Commands:
       Print pipeline metrics and top opportunities.
 
   serve
-      Run the local dashboard on 127.0.0.1.
+      Run the local dashboard.
 `);
 }
 
@@ -100,6 +103,12 @@ async function main(): Promise<void> {
   if (command === "seed") {
     const seeded = await seedFixtures(store);
     console.log(`Seeded ${seeded.length} synthetic leads.`);
+    return;
+  }
+
+  if (command === "purge-fixtures") {
+    const removed = await removeFixtureLeads(store);
+    console.log(`Removed ${removed} synthetic fixture lead${removed === 1 ? "" : "s"}; real leads were preserved.`);
     return;
   }
 
