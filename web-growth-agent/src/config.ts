@@ -27,6 +27,9 @@ const overpassDefaults = Array.from(new Set([
 export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
+  groqApiKey: process.env.GROQ_API_KEY?.trim() || "",
+  groqModel: process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-20b",
+  salesAiProvider: process.env.WGA_SALES_AI_PROVIDER?.trim().toLowerCase() || "groq",
   scoutModel: process.env.WGA_SCOUT_MODEL?.trim() || "gemini-3.5-flash-lite",
   mcpModel: process.env.WGA_MCP_MODEL?.trim() || "gemini-3.8-flash",
   scoutSource: process.env.WGA_SCOUT_SOURCE?.trim().toLowerCase() || "auto",
