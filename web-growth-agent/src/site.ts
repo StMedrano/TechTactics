@@ -1,7 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config.js";
-import type { Lead, SalesAssets } from "./types.js";
+import type { Lead, LeadPreviewState, SalesAssets } from "./types.js";
 import { escapeHtml } from "./utils.js";
 
 function contactHtml(lead: Lead): string {
@@ -70,17 +70,166 @@ function demoHtml(lead: Lead, assets: SalesAssets): string {
 </html>`;
 }
 
-export async function writeLeadArtifacts(lead: Lead, assets: SalesAssets): Promise<{ demoPath: string; directory: string }> {
+async function replaceDirectory(
+  stagingDirectory: string,
+  targetDirectory: string
+): Promise<void> {
+  const backupDirectory =
+    `${targetDirectory}.previous-${process.pid}-${Date.now()}`;
+
+  let previousMoved = false;
+
+  try {
+    await rename(targetDirectory, backupDirectory);
+    previousMoved = true;
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      error.code !== "ENOENT"
+    ) {
+      throw error;
+    }
+  }
+
+  try {
+    await rename(stagingDirectory, targetDirectory);
+
+    if (previousMoved) {
+      await rm(backupDirectory, {
+        recursive: true,
+        force: true
+      });
+    }
+  } catch (error) {
+    await rm(targetDirectory, {
+      recursive: true,
+      force: true
+    });
+
+    if (previousMoved) {
+      await rename(backupDirectory, targetDirectory);
+    }
+
+    throw error;
+  }
+}
+
+function generatedPreviewState(
+  lead: Lead,
+  assets: SalesAssets
+): LeadPreviewState {
+  if (lead.preview?.source === "uploaded") {
+    return {
+      ...lead.preview,
+      source: "uploaded",
+      entrypoint: "index.html",
+      previewUrlPath: `/preview/${lead.id}/`,
+      generatedAt: assets.generatedAt
+    };
+  }
+
+  return {
+    source: "generated",
+    updatedAt: assets.generatedAt,
+    entrypoint: "index.html",
+    previewUrlPath: `/preview/${lead.id}/`,
+    generatedAt: assets.generatedAt
+  };
+}
+
+export async function writeLeadArtifacts(
+  lead: Lead,
+  assets: SalesAssets
+): Promise<{
+  demoPath: string;
+  directory: string;
+  preview: LeadPreviewState;
+}> {
   const directory = path.join(config.artifactDir, lead.id);
-  const demoDirectory = path.join(directory, "demo");
-  await mkdir(demoDirectory, { recursive: true });
+
+  const generatedDirectory =
+    path.join(directory, "demo-generated");
+
+  const demoDirectory =
+    path.join(directory, "demo");
+
+  const suffix = `${process.pid}-${Date.now()}`;
+
+  const generatedStagingDirectory =
+    path.join(directory, `.demo-generated-staging-${suffix}`);
+
+  const demoStagingDirectory =
+    path.join(directory, `.demo-staging-${suffix}`);
+
+  await mkdir(directory, {
+    recursive: true
+  });
+
+  await mkdir(generatedStagingDirectory, {
+    recursive: true
+  });
+
+  await writeFile(
+    path.join(generatedStagingDirectory, "index.html"),
+    demoHtml(lead, assets),
+    "utf8"
+  );
+
+  await replaceDirectory(
+    generatedStagingDirectory,
+    generatedDirectory
+  );
+
+  const preview = generatedPreviewState(
+    lead,
+    assets
+  );
+
+  if (preview.source === "generated") {
+    await cp(
+      generatedDirectory,
+      demoStagingDirectory,
+      {
+        recursive: true
+      }
+    );
+
+    await replaceDirectory(
+      demoStagingDirectory,
+      demoDirectory
+    );
+  }
 
   await Promise.all([
-    writeFile(path.join(demoDirectory, "index.html"), demoHtml(lead, assets), "utf8"),
-    writeFile(path.join(directory, "proposal.md"), assets.proposalMarkdown, "utf8"),
-    writeFile(path.join(directory, "outreach-draft.txt"), assets.outreachDraft + "\n", "utf8"),
-    writeFile(path.join(directory, "business-summary.txt"), assets.businessSummary + "\n", "utf8")
+    writeFile(
+      path.join(directory, "proposal.md"),
+      assets.proposalMarkdown,
+      "utf8"
+    ),
+    writeFile(
+      path.join(directory, "outreach-draft.txt"),
+      assets.outreachDraft + "\n",
+      "utf8"
+    ),
+    writeFile(
+      path.join(directory, "business-summary.txt"),
+      assets.businessSummary + "\n",
+      "utf8"
+    ),
+    writeFile(
+      path.join(directory, "preview-metadata.json"),
+      JSON.stringify(preview, null, 2) + "\n",
+      "utf8"
+    )
   ]);
 
-  return { demoPath: path.join(demoDirectory, "index.html"), directory };
+  return {
+    demoPath: path.join(
+      demoDirectory,
+      "index.html"
+    ),
+    directory,
+    preview
+  };
 }
