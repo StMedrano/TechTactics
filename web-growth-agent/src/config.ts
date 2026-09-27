@@ -43,6 +43,8 @@ export const config = {
   port: Number(process.env.WGA_PORT || "4317"),
   dataDir: path.resolve(process.cwd(), process.env.WGA_DATA_DIR || "./data"),
   artifactDir: path.resolve(process.cwd(), process.env.WGA_ARTIFACT_DIR || "./artifacts"),
+  previewBaseUrl: process.env.WGA_PREVIEW_BASE_URL?.trim() || "http://localhost:4318",
+  maxPreviewUploadBytes: positiveNumber(process.env.WGA_MAX_PREVIEW_UPLOAD_MB, 25) * 1024 * 1024,
   defaultMarkets: csv(process.env.WGA_DEFAULT_MARKETS, ["Prairieville LA", "Baton Rouge LA", "Gonzales LA"]),
   defaultCategories: csv(process.env.WGA_DEFAULT_CATEGORIES, [
     "plumber",

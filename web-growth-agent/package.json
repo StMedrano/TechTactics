@@ -14,17 +14,23 @@
     "wga": "tsx src/cli.ts"
   },
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
-    "zod": "^3.24.1",
-    "@google/genai": "^2.24.0"
+    "multer": "^2.4.0",
+    "yauzl": "^3.4.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.3.0",
+    "@types/yauzl": "^3.4.0",
+    "@types/yazl": "^3.3.1",
     "tsx": "^4.20.3",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "yazl": "^3.3.1"
   },
   "engines": {
     "node": ">=20"

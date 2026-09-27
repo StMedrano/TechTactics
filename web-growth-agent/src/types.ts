@@ -61,6 +61,15 @@ export interface SalesAssets {
   recommendedPackage: "Launch" | "Growth" | "Pro";
 }
 
+export interface LeadPreviewState {
+  source: "generated" | "uploaded";
+  updatedAt: string;
+  entrypoint: "index.html";
+  previewUrlPath: string;
+  uploadedFileName?: string;
+  generatedAt?: string;
+}
+
 export interface OutreachSendState {
   status: "pending" | "needs_review" | "sent";
   attemptId: string;
@@ -111,6 +120,7 @@ export interface Lead {
   score?: OpportunityScore;
   salesAssets?: SalesAssets;
   demoPath?: string;
+  preview?: LeadPreviewState;
   communications?: CommunicationRecord[];
   notes: string[];
 }
