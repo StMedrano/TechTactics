@@ -1,10 +1,39 @@
 import { auditWebsite } from "./audit.js";
 import { generateSalesAssets } from "./ai.js";
+import {
+  prepareRestoreGeneratedPreview,
+  prepareUploadedPreview,
+  type PreviewUploadInput
+} from "./preview.js";
 import { calculateOpportunityScore, shouldQualify } from "./score.js";
 import { writeLeadArtifacts } from "./site.js";
 import { LeadStore } from "./store.js";
 import type { Lead, LeadStage } from "./types.js";
 import { nowIso } from "./utils.js";
+
+const previewEligibleStages: LeadStage[] = [
+  "qualified",
+  "demo_ready",
+  "approved"
+];
+
+function invalidateContentApproval(lead: Lead): Lead {
+  return {
+    ...lead,
+    approvedForOutreach: false,
+    approvedOutreachGeneratedAt: undefined,
+    outreachSend: undefined,
+    stage: "demo_ready"
+  };
+}
+
+function requirePreviewEligibleStage(lead: Lead): void {
+  if (!previewEligibleStages.includes(lead.stage)) {
+    throw new Error(
+      `Lead must be qualified before changing its preview. Current stage: ${lead.stage}`
+    );
+  }
+}
 
 const transitions: Record<LeadStage, LeadStage[]> = {
   new: ["audited", "lost"],
@@ -69,11 +98,81 @@ export async function generateForLead(id: string, store = new LeadStore()): Prom
     ...current,
     salesAssets: assets,
     demoPath: artifact.demoPath,
+    preview: artifact.preview,
     approvedForOutreach: false,
     approvedOutreachGeneratedAt: undefined,
     outreachSend: undefined,
     stage: "demo_ready"
   }));
+}
+
+export async function uploadPreviewForLead(
+  id: string,
+  input: PreviewUploadInput,
+  store = new LeadStore()
+): Promise<Lead> {
+  const lead = await store.get(id);
+
+  if (!lead) {
+    throw new Error(`Lead not found: ${id}`);
+  }
+
+  requirePreviewEligibleStage(lead);
+
+  const transaction = await prepareUploadedPreview(
+    lead,
+    input
+  );
+
+  let updated: Lead;
+
+  try {
+    updated = await store.update(id, (current) => ({
+      ...invalidateContentApproval(current),
+      preview: transaction.preview,
+      demoPath: transaction.demoPath
+    }));
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  await transaction.commit();
+
+  return updated;
+}
+
+export async function restoreGeneratedPreviewForLead(
+  id: string,
+  store = new LeadStore()
+): Promise<Lead> {
+  const lead = await store.get(id);
+
+  if (!lead) {
+    throw new Error(`Lead not found: ${id}`);
+  }
+
+  requirePreviewEligibleStage(lead);
+
+  const transaction =
+    await prepareRestoreGeneratedPreview(lead);
+
+  let updated: Lead;
+
+  try {
+    updated = await store.update(id, (current) => ({
+      ...invalidateContentApproval(current),
+      preview: transaction.preview,
+      demoPath: transaction.demoPath
+    }));
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  await transaction.commit();
+
+  return updated;
 }
 
 export async function approveLead(id: string, store = new LeadStore()): Promise<Lead> {
