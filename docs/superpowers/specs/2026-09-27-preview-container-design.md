@@ -106,10 +106,14 @@ artifacts/
 Rules:
 
 - `demo/` is always the active preview served by the preview container.
-- `demo-generated/` stores the latest AI-generated preview when `demo/` is replaced by an uploaded site.
-- When generation is the active source, `demo/` contains the generated preview and `demo-generated/` may either mirror the last generated version or be absent until a manual replacement occurs.
-- Regeneration always creates a fresh generated preview first, then updates the active preview according to the current workflow action.
-- Manual upload never deletes the most recent generated preview.
+- `demo-generated/` is always the canonical latest AI-generated preview.
+- Initial generation writes the generated preview to `demo-generated/` and copies/promotes it to `demo/` as the active preview.
+- Manual upload replaces only `demo/`; it never deletes or overwrites `demo-generated/`.
+- Regeneration always refreshes `demo-generated/` first.
+- If the active preview source is `generated`, regeneration also refreshes `demo/`.
+- If the active preview source is `uploaded`, regeneration leaves `demo/` unchanged until the operator explicitly restores or replaces it.
+
+This removes ambiguity about which directory is authoritative for generated content.
 
 ## Preview Metadata
 
@@ -188,10 +192,12 @@ The preview Nginx configuration must:
 - Return 404 for missing preview files.
 - Send `X-Content-Type-Options: nosniff`.
 - Send a restrictive `Content-Security-Policy` for this first phase.
-- Prevent framing by arbitrary external origins while allowing command-center embedding if an iframe is used.
-- Avoid CORS headers that would grant command-center API access.
+- Prevent framing by every origin.
+- Avoid CORS headers that would grant cross-origin access.
 
-Initial preview CSP should support static HTML/CSS/images/fonts and block script execution:
+Previews open in a new tab; they are not embedded in the command center during this phase. Therefore the CSP can be fixed and does not require deployment-time origin templating.
+
+Initial preview CSP:
 
 ```text
 default-src 'self';
@@ -200,12 +206,12 @@ style-src 'self' 'unsafe-inline';
 img-src 'self' data:;
 font-src 'self' data:;
 connect-src 'none';
-frame-ancestors 'self' http://<command-center-origin>;
+frame-ancestors 'none';
 base-uri 'none';
 form-action 'none';
 ```
 
-The exact `frame-ancestors` value should be configuration-driven at deployment time. If the dashboard opens previews in a new tab rather than embedding them, `frame-ancestors 'none'` is preferred.
+This supports static HTML/CSS/images/fonts while blocking scripts, network calls, forms, and framing.
 
 ## Dashboard Workflow
 
@@ -232,7 +238,7 @@ Restore Generated Version
 
 Behavior:
 
-- **Preview Website** opens the preview origin in a new tab.
+- **Preview Website** opens the isolated preview origin in a new browser tab.
 - **Regenerate** runs the existing generation pipeline again and refreshes generated artifacts.
 - **Upload My Website** accepts one ZIP archive.
 - **Restore Generated Version** replaces the active `demo/` directory with the preserved generated version.
@@ -262,17 +268,19 @@ Existing approval and send endpoints remain unchanged.
 ### Upload endpoint
 
 - Accepts one multipart ZIP file.
-- Lead must exist and be at least `qualified`.
-- Upload does not change the lead to `approved`.
+- Lead must exist and be `qualified`, `demo_ready`, or `approved`.
+- Upload does not approve outreach.
 - Upload clears prior outreach approval if the preview/content package changes after approval.
+- A successful upload leaves the lead in `demo_ready` with `preview.source = "uploaded"`.
 - Returns updated lead preview metadata.
 
 ### Restore endpoint
 
-- Requires an existing preserved generated preview.
-- Atomically swaps the generated preview back into `demo/`.
+- Requires an existing `demo-generated/` preview.
+- Atomically replaces the active `demo/` directory with the canonical generated preview.
 - Sets preview source to `generated`.
 - Clears prior outreach approval because the reviewed website content changed.
+- Leaves the lead in `demo_ready`.
 
 ## Upload Validation
 
@@ -335,28 +343,30 @@ Flow:
 2. Validate archive metadata before extraction where possible.
 3. Extract only validated entries into staging.
 4. Confirm `index.html` exists after normalization.
-5. If the current active preview is generated and no preserved generated copy exists, preserve it as `demo-generated/`.
-6. Rename current `demo/` to a temporary rollback directory.
-7. Rename staging to `demo/`.
-8. Update lead preview metadata.
-9. Remove rollback directory only after persistence succeeds.
-10. On failure, restore the previous `demo/` directory and leave lead metadata unchanged.
+5. Rename current `demo/` to a temporary rollback directory.
+6. Rename staging to `demo/`.
+7. Persist lead preview metadata.
+8. Remove the rollback directory only after persistence succeeds.
+9. On failure, restore the previous `demo/` directory and leave lead metadata unchanged.
 
-Filesystem operations should stay on the same mounted volume so rename operations are atomic on normal Linux filesystems.
+The canonical generated copy in `demo-generated/` is never part of the manual-upload swap and therefore remains available for restore.
+
+Filesystem operations stay on the same mounted volume so rename operations are atomic on normal Linux filesystems.
 
 ## Generation and Regeneration Semantics
 
-The current generator in `src/site.ts` remains deterministic and fact-bounded. Groq supplies approved sales/demo copy, while the HTML template must only use known lead data and generated fields already validated by the sales asset schema.
+The current generator in `src/site.ts` remains deterministic and fact-bounded. Groq supplies sales/demo copy, while the HTML template uses only known lead data and generated fields already validated by the sales asset schema.
 
-When regenerating:
+When generating or regenerating:
 
-- Generate into a staging directory first.
-- Update `demo-generated/` with the new generated result.
-- If the active source is `generated`, also promote the regenerated result to `demo/`.
-- If the active source is `uploaded`, keep the uploaded `demo/` active and only refresh `demo-generated/` unless the operator explicitly chooses to replace the upload.
-- Regeneration clears outreach approval because the underlying generated sales assets changed.
+1. Build a fresh generated preview in a staging directory.
+2. Atomically replace `demo-generated/` with the staged generated preview.
+3. If no preview exists yet, copy/promote `demo-generated/` to `demo/` and set source to `generated`.
+4. If the active source is `generated`, refresh `demo/` from the new canonical generated preview.
+5. If the active source is `uploaded`, keep `demo/` unchanged.
+6. Regeneration clears outreach approval because generated sales assets changed.
 
-This prevents a manual site from being silently overwritten by a background regeneration.
+This prevents a manual site from being silently overwritten by regeneration while keeping one unambiguous canonical generated version.
 
 ## Approval Invariants
 
@@ -367,7 +377,7 @@ Invariants:
 1. `generate` never approves outreach.
 2. `upload-preview` never approves outreach.
 3. `restore-generated-preview` never approves outreach.
-4. Any content-changing action after approval clears `approvedForOutreach`, clears `approvedOutreachGeneratedAt`, clears pending send state, and returns the lead to `demo_ready` if necessary.
+4. Any content-changing action after approval clears `approvedForOutreach`, clears `approvedOutreachGeneratedAt`, clears pending send state, and returns the lead to `demo_ready`.
 5. `send` still requires the existing explicit approval check.
 
 ## Error Handling
@@ -395,7 +405,7 @@ All failed uploads leave the currently active preview unchanged.
 
 ### Generation errors
 
-Generation failure leaves the prior preview active. The lead stage and approval state should not be mutated until the new artifact set has been written successfully.
+Generation failure leaves the prior generated and active previews unchanged. Lead stage and approval state are not mutated until the new artifact set has been written successfully.
 
 ## Security Boundary
 
@@ -430,22 +440,23 @@ All current tests must remain green.
 Add tests covering:
 
 1. Generated artifact layout includes a valid preview entrypoint.
-2. Preview metadata records source `generated` after generation.
-3. Upload accepts a valid static ZIP containing `index.html`.
-4. Upload accepts a single enclosing folder and normalizes it.
-5. Upload rejects `../` traversal.
-6. Upload rejects absolute paths.
-7. Upload rejects symlink/hard-link entries.
-8. Upload rejects missing `index.html`.
-9. Upload rejects compressed/extracted size violations.
-10. Upload failure preserves the previous active preview.
-11. Manual upload preserves the generated preview.
-12. Restore-generated switches the active source back to `generated`.
-13. Regeneration does not overwrite an uploaded active preview.
-14. Generation, upload, restore, and regeneration never auto-approve outreach.
-15. Content-changing actions clear existing outreach approval.
-16. Preview Nginx configuration disables autoindex and adds required security headers.
-17. Dashboard renders Preview, Regenerate, Upload, Restore, and Approve actions in the correct states.
+2. Initial generation writes both the canonical `demo-generated/` preview and active `demo/` preview.
+3. Preview metadata records source `generated` after generation.
+4. Upload accepts a valid static ZIP containing `index.html`.
+5. Upload accepts a single enclosing folder and normalizes it.
+6. Upload rejects `../` traversal.
+7. Upload rejects absolute paths.
+8. Upload rejects symlink/hard-link entries.
+9. Upload rejects missing `index.html`.
+10. Upload rejects compressed/extracted size violations.
+11. Upload failure preserves the previous active preview.
+12. Manual upload preserves `demo-generated/`.
+13. Restore-generated switches the active source back to `generated`.
+14. Regeneration does not overwrite an uploaded active preview.
+15. Generation, upload, restore, and regeneration never auto-approve outreach.
+16. Content-changing actions clear existing outreach approval.
+17. Preview Nginx configuration disables autoindex and adds required CSP and security headers.
+18. Dashboard renders Preview, Regenerate, Upload, Restore, and Approve actions in the correct states.
 
 ### Deployment verification
 
@@ -502,7 +513,7 @@ The feature is complete when all of the following are true:
 - A valid website ZIP can replace the active preview.
 - The latest generated preview is retained and can be restored.
 - Unsafe or invalid ZIPs are rejected without altering the current preview.
-- Uploaded preview content has no access to command-center secrets or APIs through shared origin privileges.
+- Uploaded preview content has no access to command-center secrets or APIs through shared-origin privileges.
 - Preview responses use the defined static-site CSP and security headers.
 - Existing outreach approval and Zoho send protections remain intact.
 - Existing tests pass and the new preview/upload test suite passes.
