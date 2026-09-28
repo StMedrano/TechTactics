@@ -25,6 +25,8 @@ ENV NODE_ENV=production
 COPY package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/agents ./agents
+COPY --from=builder /app/company-os ./company-os
 
 EXPOSE 4317
 
