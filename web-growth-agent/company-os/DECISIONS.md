@@ -81,3 +81,16 @@ Record important TechTactics Web Growth decisions with the reason they were made
 **Affected systems:** Command Center information architecture, Express routes, lead review, responsive navigation, operations documentation.
 
 **Revisit when:** Usage evidence shows a different primary mobile task set, or persistent inbox/accounting/legal workflows require a new navigation priority.
+
+## 2026-09-28 — Web Designer requires TechTactics UI Design
+
+Every Designer-generated website concept must use
+`company-os/skills/techtactics-ui-design.md` before rendering.
+
+This is durable company-owned operating knowledge.
+
+It must not depend on chat history or on the ChatGPT plugin being
+available in production.
+
+Missing Designer governance files are configuration failures and must
+not silently fall back to ungoverned generation.
