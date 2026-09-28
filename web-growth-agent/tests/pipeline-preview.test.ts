@@ -22,6 +22,57 @@ vi.mock("../src/ai.js", () => ({
 }));
 
 
+vi.mock("../src/designer.js", () => ({
+  generateWebsiteDesign: vi.fn(
+    async (_lead: unknown, assets: any) => ({
+      skill: "techtactics-ui-design",
+      mode: "persuade",
+      designRead: {
+        audience: "Local customers",
+        tone: "Professional and trustworthy",
+        density: "moderate",
+        motion: "restrained"
+      },
+      theme: {
+        palette: "professional-light",
+        radius: "soft",
+        typography: "system-modern"
+      },
+      hero: {
+        eyebrow: "Local business",
+        headline: assets.demoHeadline,
+        subheadline: assets.demoSubheadline,
+        primaryCta: "Request Information",
+        secondaryCta: "View Services"
+      },
+      sections: [
+        {
+          type: "services",
+          title: "Services",
+          items: assets.demoServices
+        },
+        {
+          type: "about",
+          title: "About",
+          body: assets.businessSummary
+        },
+        {
+          type: "contact",
+          title: "Contact",
+          body: "Get in touch."
+        }
+      ],
+      quality: {
+        semanticHeadings: true,
+        visibleFocus: true,
+        reducedMotion: true,
+        mobileFirst: true
+      }
+    })
+  )
+}));
+
+
 const originalCwd = process.cwd();
 
 afterEach(() => {
@@ -329,7 +380,10 @@ describe("preview pipeline lifecycle", () => {
       updatedAt: "2026-09-27T02:00:00.000Z",
       entrypoint: "index.html",
       previewUrlPath: "/preview/lead_pipeline_preview/",
-      generatedAt: "2026-09-27T02:00:00.000Z"
+      generatedAt: "2026-09-27T02:00:00.000Z",
+      designSkill: "techtactics-ui-design",
+      designMode: "persuade",
+      designEngine: "designer-agent"
     });
 
     const generated = await readFile(
@@ -415,6 +469,18 @@ describe("preview pipeline lifecycle", () => {
       "2026-09-27T02:00:00.000Z"
     );
 
+    expect(updated.preview?.designSkill).toBe(
+      "techtactics-ui-design"
+    );
+
+    expect(updated.preview?.designMode).toBe(
+      "persuade"
+    );
+
+    expect(updated.preview?.designEngine).toBe(
+      "designer-agent"
+    );
+
     const active = await readFile(
       path.join(leadDir, "demo", "index.html"),
       "utf8"
@@ -428,6 +494,322 @@ describe("preview pipeline lifecycle", () => {
     expect(active).toContain("UPLOADED ACTIVE");
     expect(generated).toContain("Regenerated headline");
     expect(generated).not.toContain("OLD GENERATED");
+  });
+
+
+  it("writes Designer metadata without exposing private prompt material", async () => {
+    const { root, store, pipeline } = await setup("qualified");
+
+    await pipeline.generateForLead(
+      "lead_pipeline_preview",
+      store
+    );
+
+    const metadata = JSON.parse(
+      await readFile(
+        path.join(
+          root,
+          "artifacts",
+          "lead_pipeline_preview",
+          "preview-metadata.json"
+        ),
+        "utf8"
+      )
+    );
+
+    expect(metadata.designSkill).toBe(
+      "techtactics-ui-design"
+    );
+
+    expect(metadata.designMode).toBe(
+      "persuade"
+    );
+
+    expect(metadata.designEngine).toBe(
+      "designer-agent"
+    );
+
+    const serialized =
+      JSON.stringify(metadata);
+
+    expect(serialized).not.toContain(
+      "MANDATORY DESIGNER CONTRACT"
+    );
+
+    expect(serialized).not.toContain(
+      "GROQ_API_KEY"
+    );
+
+    expect(serialized).not.toContain(
+      "GEMINI_API_KEY"
+    );
+  });
+
+  it("Designer failure leaves preview and approval state unchanged", async () => {
+    const { root, store, pipeline } = await setup("approved");
+
+    const leadDir = path.join(
+      root,
+      "artifacts",
+      "lead_pipeline_preview"
+    );
+
+    await mkdir(
+      path.join(leadDir, "demo"),
+      { recursive: true }
+    );
+
+    await mkdir(
+      path.join(leadDir, "demo-generated"),
+      { recursive: true }
+    );
+
+    await writeFile(
+      path.join(
+        leadDir,
+        "demo",
+        "index.html"
+      ),
+      "<html>ACTIVE BEFORE FAILURE</html>",
+      "utf8"
+    );
+
+    await writeFile(
+      path.join(
+        leadDir,
+        "demo-generated",
+        "index.html"
+      ),
+      "<html>GENERATED BEFORE FAILURE</html>",
+      "utf8"
+    );
+
+    const designer =
+      await import("../src/designer.js");
+
+    vi.mocked(
+      designer.generateWebsiteDesign
+    ).mockRejectedValueOnce(
+      new Error(
+        "Designer runtime configuration error: missing skill"
+      )
+    );
+
+    await expect(
+      pipeline.generateForLead(
+        "lead_pipeline_preview",
+        store
+      )
+    ).rejects.toThrow(
+      /Designer runtime configuration error/
+    );
+
+    const current =
+      await store.get(
+        "lead_pipeline_preview"
+      );
+
+    expect(current?.stage).toBe(
+      "approved"
+    );
+
+    expect(
+      current?.approvedForOutreach
+    ).toBe(true);
+
+    expect(
+      current?.approvedOutreachGeneratedAt
+    ).toBe(
+      "2026-09-27T00:00:00.000Z"
+    );
+
+    expect(
+      current?.outreachSend?.status
+    ).toBe("pending");
+
+    const active =
+      await readFile(
+        path.join(
+          leadDir,
+          "demo",
+          "index.html"
+        ),
+        "utf8"
+      );
+
+    const generated =
+      await readFile(
+        path.join(
+          leadDir,
+          "demo-generated",
+          "index.html"
+        ),
+        "utf8"
+      );
+
+    expect(active).toContain(
+      "ACTIVE BEFORE FAILURE"
+    );
+
+    expect(generated).toContain(
+      "GENERATED BEFORE FAILURE"
+    );
+  });
+
+  it("generation persistence failure rolls artifact filesystem back", async () => {
+    const root =
+      await mkdtemp(
+        path.join(
+          os.tmpdir(),
+          "wga-generation-rollback-"
+        )
+      );
+
+    process.chdir(root);
+    vi.resetModules();
+
+    class FailingStore extends LeadStore {
+      failUpdates = false;
+
+      override async update(
+        id: string,
+        updater: (lead: Lead) => Lead
+      ): Promise<Lead> {
+        if (this.failUpdates) {
+          throw new Error(
+            "simulated generation persistence failure"
+          );
+        }
+
+        return super.update(
+          id,
+          updater
+        );
+      }
+    }
+
+    const store =
+      new FailingStore(
+        path.join(
+          root,
+          "data",
+          "leads.json"
+        )
+      );
+
+    await store.upsert(
+      baseLead("approved")
+    );
+
+    const leadDir =
+      path.join(
+        root,
+        "artifacts",
+        "lead_pipeline_preview"
+      );
+
+    await mkdir(
+      path.join(
+        leadDir,
+        "demo"
+      ),
+      {
+        recursive: true
+      }
+    );
+
+    await mkdir(
+      path.join(
+        leadDir,
+        "demo-generated"
+      ),
+      {
+        recursive: true
+      }
+    );
+
+    await writeFile(
+      path.join(
+        leadDir,
+        "demo",
+        "index.html"
+      ),
+      "<html>ORIGINAL ACTIVE</html>",
+      "utf8"
+    );
+
+    await writeFile(
+      path.join(
+        leadDir,
+        "demo-generated",
+        "index.html"
+      ),
+      "<html>ORIGINAL GENERATED</html>",
+      "utf8"
+    );
+
+    await writeFile(
+      path.join(
+        leadDir,
+        "proposal.md"
+      ),
+      "ORIGINAL PROPOSAL",
+      "utf8"
+    );
+
+    store.failUpdates = true;
+
+    const pipeline =
+      await import(
+        "../src/pipeline.js"
+      );
+
+    await expect(
+      pipeline.generateForLead(
+        "lead_pipeline_preview",
+        store
+      )
+    ).rejects.toThrow(
+      /persistence/i
+    );
+
+    expect(
+      await readFile(
+        path.join(
+          leadDir,
+          "demo",
+          "index.html"
+        ),
+        "utf8"
+      )
+    ).toContain(
+      "ORIGINAL ACTIVE"
+    );
+
+    expect(
+      await readFile(
+        path.join(
+          leadDir,
+          "demo-generated",
+          "index.html"
+        ),
+        "utf8"
+      )
+    ).toContain(
+      "ORIGINAL GENERATED"
+    );
+
+    expect(
+      await readFile(
+        path.join(
+          leadDir,
+          "proposal.md"
+        ),
+        "utf8"
+      )
+    ).toBe(
+      "ORIGINAL PROPOSAL"
+    );
   });
 
 });

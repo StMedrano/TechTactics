@@ -68,6 +68,13 @@ export interface LeadPreviewState {
   previewUrlPath: string;
   uploadedFileName?: string;
   generatedAt?: string;
+  designSkill?: "techtactics-ui-design";
+  designMode?:
+    | "persuade"
+    | "operate"
+    | "read"
+    | "experience";
+  designEngine?: "designer-agent";
 }
 
 export interface OutreachSendState {

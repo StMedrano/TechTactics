@@ -1,12 +1,13 @@
 import { auditWebsite } from "./audit.js";
 import { generateSalesAssets } from "./ai.js";
+import { generateWebsiteDesign } from "./designer.js";
 import {
   prepareRestoreGeneratedPreview,
   prepareUploadedPreview,
   type PreviewUploadInput
 } from "./preview.js";
 import { calculateOpportunityScore, shouldQualify } from "./score.js";
-import { writeLeadArtifacts } from "./site.js";
+import { prepareLeadArtifacts } from "./site.js";
 import { LeadStore } from "./store.js";
 import type { Lead, LeadStage } from "./types.js";
 import { nowIso } from "./utils.js";
@@ -92,18 +93,70 @@ export async function generateForLead(id: string, store = new LeadStore()): Prom
     throw new Error(`Lead must be qualified before generation. Current stage: ${lead.stage}`);
   }
 
-  const assets = await generateSalesAssets(lead);
-  const artifact = await writeLeadArtifacts(lead, assets);
-  return store.update(id, (current) => ({
-    ...current,
-    salesAssets: assets,
-    demoPath: artifact.demoPath,
-    preview: artifact.preview,
-    approvedForOutreach: false,
-    approvedOutreachGeneratedAt: undefined,
-    outreachSend: undefined,
-    stage: "demo_ready"
-  }));
+  const assets =
+    await generateSalesAssets(
+      lead
+    );
+
+  /*
+   * Designer governance and design validation happen before the
+   * artifact transaction begins. A missing mandatory skill therefore
+   * cannot mutate preview files or approval state.
+   */
+  const design =
+    await generateWebsiteDesign(
+      lead,
+      assets
+    );
+
+  const transaction =
+    await prepareLeadArtifacts(
+      lead,
+      assets,
+      design
+    );
+
+  let updated: Lead;
+
+  try {
+    updated =
+      await store.update(
+        id,
+        current => ({
+          ...current,
+
+          salesAssets:
+            assets,
+
+          demoPath:
+            transaction.demoPath,
+
+          preview:
+            transaction.preview,
+
+          approvedForOutreach:
+            false,
+
+          approvedOutreachGeneratedAt:
+            undefined,
+
+          outreachSend:
+            undefined,
+
+          stage:
+            "demo_ready"
+        })
+      );
+  } catch (
+    error
+  ) {
+    await transaction.rollback();
+    throw error;
+  }
+
+  await transaction.commit();
+
+  return updated;
 }
 
 export async function uploadPreviewForLead(
