@@ -34,4 +34,10 @@ describe("TechTactics 2026 brand refresh", () => {
     expect(twice).toContain("Find → Audit → Demo → Approve → Contact → Close");
     expect(twice.match(/data-brand-refresh="2026"/g)).toHaveLength(1);
   });
+
+  it("leaves a dashboard with the integrated 2026 shell unchanged", () => {
+    const integrated = `<!doctype html><html data-brand-refresh="2026"><head><style>--tt-gold:#F7AD4E</style></head><body><img class="brand-logo"><label class="command-search"></label><section id="inbox">Inbox</section></body></html>`;
+
+    expect(applyBrandRefresh(integrated)).toBe(integrated);
+  });
 });
