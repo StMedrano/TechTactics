@@ -1,4 +1,12 @@
-import express, { type Express, type Request, type Response } from "express";
+import { createReadStream } from "node:fs";
+import { realpath, stat } from "node:fs/promises";
+import path from "node:path";
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import "./brand.js";
 import { sendApprovedOutreach } from "./communications.js";
 import { config } from "./config.js";
@@ -23,6 +31,21 @@ const pagePaths = [
   "/integrations",
   "/settings",
 ] as const;
+
+async function privatePreviewPath(demoPath: string): Promise<string | undefined> {
+  try {
+    const [artifactRoot, candidate] = await Promise.all([
+      realpath(config.artifactDir),
+      realpath(path.resolve(demoPath)),
+    ]);
+    const relative = path.relative(artifactRoot, candidate);
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) return undefined;
+    if (!(await stat(candidate)).isFile()) return undefined;
+    return candidate;
+  } catch {
+    return undefined;
+  }
+}
 
 export function createApp(store = new LeadStore()): Express {
   const app = express();
@@ -53,6 +76,28 @@ export function createApp(store = new LeadStore()): Express {
 
   app.get("/api/leads", async (_req, res) => res.json(await store.all()));
   app.get("/api/report", async (_req, res) => res.json(buildReport(await store.all())));
+
+  app.get("/api/leads/:id/preview", async (req, res) => {
+    const lead = await store.get(req.params.id);
+    const previewPath = lead?.demoPath ? await privatePreviewPath(lead.demoPath) : undefined;
+    if (!previewPath) {
+      res.status(404).type("text").send("Preview not found");
+      return;
+    }
+    res.set({
+      "Cache-Control": "private, no-store",
+      "Content-Security-Policy": "default-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; script-src 'none'; frame-ancestors 'self'",
+      "X-Content-Type-Options": "nosniff",
+      "X-Robots-Tag": "noindex, nofollow, noarchive",
+    });
+    res.type("html");
+    const preview = createReadStream(previewPath);
+    preview.on("error", () => {
+      if (!res.headersSent) res.status(404).type("text").send("Preview not found");
+      else res.destroy();
+    });
+    preview.pipe(res);
+  });
 
   app.post("/api/leads/:id/generate", async (req, res) => {
     try {
@@ -88,6 +133,19 @@ export function createApp(store = new LeadStore()): Express {
 
   app.use(async (_req, res) => {
     res.status(404).type("html").send(renderNotFoundDashboard(await store.all()));
+  });
+
+  app.use(async (
+    error: unknown,
+    _req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    if (!(error instanceof URIError)) {
+      next(error);
+      return;
+    }
+    res.status(400).type("html").send(renderNotFoundDashboard(await store.all()));
   });
 
   return app;

@@ -31,7 +31,7 @@ The Command Center remains dependency-light and server-rendered:
 
 Overview intentionally contains only four quick-look metrics, three next-best-work items, a compact pipeline snapshot, and integration configuration health. Detailed tables, controls, and evidence belong to dedicated pages.
 
-Preview UI is capability-gated. The GitHub implementation exposes the existing guarded generation workflow. Uploaded-preview and restore-generated controls remain hidden until their production handlers are reconciled into the same branch.
+Preview UI is capability-gated. The GitHub implementation exposes the existing guarded generation workflow. Local generated artifacts open through `/api/leads/:id/preview`, which resolves real paths inside the configured artifact directory and applies private, no-index, script-free response headers. Uploaded-preview and restore-generated controls remain hidden until their production handlers are reconciled into the same branch.
 
 ## Command Center routes
 

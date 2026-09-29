@@ -1,13 +1,15 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { config } from "../src/config.js";
 import { createApp } from "../src/server.js";
 import { LeadStore } from "../src/store.js";
 import type { Lead } from "../src/types.js";
 
 let directory = "";
+let artifactDirectory = "";
 let server: Server | undefined;
 let baseUrl = "";
 let store: LeadStore;
@@ -25,8 +27,15 @@ const seedLead: Lead = {
 
 beforeEach(async () => {
   directory = await mkdtemp(path.join(os.tmpdir(), "wga-pages-"));
+  await mkdir(config.artifactDir, { recursive: true });
+  artifactDirectory = await mkdtemp(path.join(config.artifactDir, "route-preview-"));
+  await writeFile(
+    path.join(artifactDirectory, "index.html"),
+    "<!doctype html><title>Private route preview</title>",
+    "utf8",
+  );
   store = new LeadStore(path.join(directory, "leads.json"));
-  await store.upsert(seedLead);
+  await store.upsert({ ...seedLead, demoPath: path.join(artifactDirectory, "index.html") });
   const app = createApp(store);
   server = await new Promise<Server>((resolve, reject) => {
     const candidate = app.listen(0, "127.0.0.1", (error?: Error) => {
@@ -45,6 +54,7 @@ beforeEach(async () => {
 afterEach(async () => {
   if (server) await new Promise<void>((resolve) => server?.close(() => resolve()));
   await rm(directory, { recursive: true, force: true });
+  await rm(artifactDirectory, { recursive: true, force: true });
 });
 
 describe("multipage server routes", () => {
@@ -76,6 +86,47 @@ describe("multipage server routes", () => {
     expect(response.status).toBe(404);
     expect(html).toContain("Page not found");
     expect(html).not.toContain("Error:");
+  });
+
+  it.each(["/leads/%", "/leads/%E0%A4%A"])(
+    "returns a safe client error for malformed encoded route %s",
+    async (pathname) => {
+      const response = await fetch(baseUrl + pathname);
+      const html = await response.text();
+
+      expect(response.status).toBe(400);
+      expect(html).toContain("Page not found");
+      expect(html).not.toContain("URIError");
+      expect(html).not.toContain("node_modules");
+    },
+  );
+
+  it("serves a generated preview through a private browser route", async () => {
+    const workspaceResponse = await fetch(baseUrl + "/leads/route-lead");
+    const workspaceHtml = await workspaceResponse.text();
+    const previewResponse = await fetch(baseUrl + "/api/leads/route-lead/preview");
+    const previewHtml = await previewResponse.text();
+
+    expect(workspaceHtml).toContain('href="/api/leads/route-lead/preview"');
+    expect(workspaceHtml).not.toContain(artifactDirectory);
+    expect(previewResponse.status).toBe(200);
+    expect(previewHtml).toContain("Private route preview");
+    expect(previewResponse.headers.get("x-robots-tag")).toContain("noindex");
+    expect(previewResponse.headers.get("content-security-policy")).toContain("script-src 'none'");
+    expect(previewResponse.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("does not serve preview files outside the artifact directory", async () => {
+    const outsidePath = path.join(directory, "outside-preview.html");
+    await writeFile(outsidePath, "private filesystem content", "utf8");
+    await store.upsert({ ...seedLead, demoPath: outsidePath });
+
+    const response = await fetch(baseUrl + "/api/leads/route-lead/preview");
+    const body = await response.text();
+
+    expect(response.status).toBe(404);
+    expect(body).not.toContain("private filesystem content");
+    expect(body).not.toContain(outsidePath);
   });
 
   it("renders a safe missing-lead workspace without exposing internals", async () => {

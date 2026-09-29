@@ -73,6 +73,8 @@ Inspect:
 - `artifacts/<id>/proposal.md`
 - `artifacts/<id>/demo/index.html`
 
+Open the concept from its lead workspace or the Previews page. The browser route serves only files resolved inside the configured artifact directory; it does not expose the filesystem path stored on the lead.
+
 ### 6. Approve, then contact
 Only after checking factual claims:
 

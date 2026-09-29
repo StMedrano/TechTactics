@@ -163,6 +163,7 @@ function renderPipeline(model: DashboardViewModel): string {
 
 function renderPreviewCard(model: DashboardViewModel, lead: Lead): string {
   const previewReady = Boolean(lead.demoPath || lead.salesAssets);
+  const href = previewHref(lead);
   const controls = [
     model.capabilities.generatePreview
       ? `<button class="button-secondary" type="button" onclick="generateLead('${escapeHtml(lead.id)}')">Generate</button>`
@@ -173,8 +174,8 @@ function renderPreviewCard(model: DashboardViewModel, lead: Lead): string {
     model.capabilities.restoreGeneratedPreview && previewReady
       ? `<button class="button-secondary" type="button" onclick="restoreGeneratedPreview('${escapeHtml(lead.id)}')">Restore generated</button>`
       : "",
-    lead.demoPath
-      ? `<a class="button" href="${escapeHtml(lead.demoPath)}" target="_blank" rel="noreferrer">Open private preview</a>`
+    href
+      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open private preview</a>`
       : "",
   ]
     .filter(Boolean)
@@ -264,6 +265,13 @@ function safeWebHref(value: string | undefined): string | undefined {
   }
 }
 
+function previewHref(lead: Lead): string | undefined {
+  if (!lead.demoPath) return undefined;
+  const directHref = safeWebHref(lead.demoPath);
+  if (directHref && /^https?:\/\//i.test(lead.demoPath)) return directHref;
+  return `/api/leads/${encodeURIComponent(lead.id)}/preview`;
+}
+
 function auditEvidence(lead: Lead): string[] {
   if (!lead.audit) return ["Audit has not been run for this lead."];
   const audit = lead.audit;
@@ -303,7 +311,7 @@ function renderWorkspaceActions(lead: Lead): string {
 }
 
 function renderWorkspacePreview(model: DashboardViewModel, lead: Lead): string {
-  const href = safeWebHref(lead.demoPath);
+  const href = previewHref(lead);
   const controls = [
     model.capabilities.generatePreview
       ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="generateLead(this.dataset.leadId)">Generate preview</button>`

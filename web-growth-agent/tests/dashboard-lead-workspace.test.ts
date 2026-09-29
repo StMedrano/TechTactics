@@ -92,6 +92,8 @@ describe("lead workspace", () => {
     expect(html).toContain("Owner prefers email.");
     expect(html).toContain("Bayou &lt;Electric&gt;");
     expect(html).not.toContain("Bayou <Electric>");
+    expect(html).toContain('href="/api/leads/lead-workspace/preview"');
+    expect(html).not.toContain('href="/previews/lead-workspace/index.html"');
   });
 
   it("shows a safe not-found state for a missing lead id", () => {
