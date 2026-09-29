@@ -134,19 +134,44 @@ describe("lead workspace", () => {
     expect(contacted).not.toContain('<option value="won">');
   });
 
-  it("shows preview actions only when each backend capability is present", () => {
+  it("shows preview actions only when each backend capability and preview state allow them", () => {
     const unavailable = render(fixture("qualified"));
-    const available = render(fixture("qualified"), {
+
+    const generated = render(fixture("qualified"), {
       generatePreview: true,
       uploadPreview: true,
       restoreGeneratedPreview: true,
     });
 
+    const uploaded = render(
+      fixture("qualified", {
+        preview: {
+          source: "uploaded",
+          updatedAt: "2026-09-29T00:00:00.000Z",
+          entrypoint: "index.html",
+          previewUrlPath: "/preview/lead-workspace/",
+          uploadedFileName: "customer-site.zip",
+          generatedAt: "2026-09-28T12:00:00.000Z",
+        },
+      }),
+      {
+        generatePreview: true,
+        uploadPreview: true,
+        restoreGeneratedPreview: true,
+      },
+    );
+
     expect(unavailable).not.toContain("generateLead(");
     expect(unavailable).not.toContain("uploadPreview(");
     expect(unavailable).not.toContain("restoreGeneratedPreview(");
-    expect(available).toContain("generateLead(");
-    expect(available).toContain("uploadPreview(");
-    expect(available).toContain("restoreGeneratedPreview(");
+
+    expect(generated).toContain("generateLead(");
+    expect(generated).toContain("uploadPreview(");
+    expect(generated).not.toContain("restoreGeneratedPreview(");
+
+    expect(uploaded).toContain("generateLead(");
+    expect(uploaded).toContain("uploadPreview(");
+    expect(uploaded).toContain("restoreGeneratedPreview(");
+    expect(uploaded).toContain("Restore Generated Version");
   });
 });

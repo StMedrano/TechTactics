@@ -297,10 +297,10 @@ export function createApp(
                 true,
 
               uploadPreview:
-                false,
+                true,
 
               restoreGeneratedPreview:
-                false
+                true
             }
           )
         );

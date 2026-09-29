@@ -122,7 +122,7 @@ async function sendZoho(id){if(!confirm('Send the approved outreach email throug
 async function stage(id,next){if(!next)return;const response=await fetch('/api/leads/'+encodeURIComponent(id)+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage:next})});if(!response.ok){alert(await response.text());return}location.reload()}
 async function generateLead(id){const response=await fetch('/api/leads/'+encodeURIComponent(id)+'/generate',{method:'POST'});if(!response.ok){alert(await response.text());return}location.reload()}
 async function restoreGeneratedPreview(id){const response=await fetch('/api/leads/'+encodeURIComponent(id)+'/restore-generated-preview',{method:'POST'});if(!response.ok){alert(await response.text());return}location.reload()}
-async function uploadPreview(id,input){const file=input?.files?.[0];if(!file)return;const data=new FormData();data.append('preview',file);const response=await fetch('/api/leads/'+encodeURIComponent(id)+'/upload-preview',{method:'POST',body:data});if(!response.ok){alert(await response.text());return}location.reload()}
+async function uploadPreview(id,input){const file=input?.files?.[0];if(!file)return;const data=new FormData();data.append('site',file);const response=await fetch('/api/leads/'+encodeURIComponent(id)+'/upload-preview',{method:'POST',body:data});if(!response.ok){alert(await response.text());return}location.reload()}
 document.querySelector('[data-more-toggle]')?.addEventListener('click',openMoreSheet);
 document.querySelector('[data-more-close]')?.addEventListener('click',closeMoreSheet);
 document.querySelector('[data-more-backdrop]')?.addEventListener('click',closeMoreSheet);

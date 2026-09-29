@@ -1,4 +1,5 @@
 import { config } from "./config.js";
+import { designerSkillAvailable } from "./designer-resources.js";
 import {
   dashboardStageOrder,
   type DashboardViewModel,
@@ -162,26 +163,84 @@ function renderPipeline(model: DashboardViewModel): string {
 }
 
 function renderPreviewCard(model: DashboardViewModel, lead: Lead): string {
-  const previewReady = Boolean(lead.demoPath || lead.salesAssets);
+  const preview = lead.preview;
+  const previewReady = Boolean(preview || lead.demoPath || lead.salesAssets);
   const href = previewHref(lead);
+
+  const sourceLabel =
+    preview?.source === "uploaded"
+      ? "UPLOADED"
+      : preview?.source === "generated"
+        ? "GENERATED"
+        : "PENDING";
+
+  const previewTitle =
+    preview?.source === "uploaded"
+      ? "Uploaded Preview"
+      : previewReady
+        ? "Generated Preview"
+        : "Ready for design";
+
+  const designMode = preview?.designMode
+    ? preview.designMode.replace(
+        /^./,
+        (character) =>
+          character.toUpperCase(),
+      )
+    : undefined;
+
+  const previewDetail =
+    preview?.source === "uploaded"
+      ? preview.uploadedFileName ||
+        "Uploaded website"
+      : preview?.designSkill ===
+          "techtactics-ui-design"
+        ? `TechTactics UI Design${designMode ? ` · ${designMode}` : ""}`
+        : previewReady
+          ? "Private concept preview"
+          : stageLabel(lead.stage);
+
+  const generateLabel =
+    preview?.source === "uploaded"
+      ? "Regenerate Generated Version"
+      : previewReady
+        ? "Regenerate"
+        : "Generate";
+
   const controls = [
     model.capabilities.generatePreview
-      ? `<button class="button-secondary" type="button" onclick="generateLead('${escapeHtml(lead.id)}')">Generate</button>`
+      ? `<button class="button-secondary" type="button" onclick="generateLead('${escapeHtml(lead.id)}')">${generateLabel}</button>`
       : "",
     model.capabilities.uploadPreview
-      ? `<label class="button-secondary">Upload ZIP<input class="sr-only" type="file" accept=".zip,application/zip" onchange="uploadPreview('${escapeHtml(lead.id)}',this)"></label>`
+      ? `<label class="button-secondary">Upload My Website<input class="sr-only" type="file" accept=".zip,application/zip" onchange="uploadPreview('${escapeHtml(lead.id)}',this)"></label>`
       : "",
-    model.capabilities.restoreGeneratedPreview && previewReady
-      ? `<button class="button-secondary" type="button" onclick="restoreGeneratedPreview('${escapeHtml(lead.id)}')">Restore generated</button>`
+    model.capabilities.restoreGeneratedPreview &&
+    preview?.source === "uploaded" &&
+    Boolean(preview.generatedAt)
+      ? `<button class="button-secondary" type="button" onclick="restoreGeneratedPreview('${escapeHtml(lead.id)}')">Restore Generated Version</button>`
       : "",
     href
-      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open private preview</a>`
+      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Preview Website</a>`
       : "",
   ]
     .filter(Boolean)
     .join("");
 
-  return `<article class="content-card" data-searchable><div class="preview-thumb"><strong>${escapeHtml(lead.businessName)}</strong><span>${previewReady ? "Private concept preview" : "No active preview"}</span></div><div class="content-card-meta"><div><h2>${previewReady ? "Preview ready" : "Ready for design"}</h2><p>${escapeHtml(stageLabel(lead.stage))}</p></div><span class="status ${previewReady ? "status-ready" : "status-muted"}">${previewReady ? "Private" : "Pending"}</span></div>${controls ? `<div class="card-actions" style="margin-top:14px">${controls}</div>` : ""}</article>`;
+  return `<article class="content-card" data-searchable>
+    <div class="preview-thumb">
+      <span class="status ${previewReady ? "status-ready" : "status-muted"}">${sourceLabel}</span>
+      <strong>${escapeHtml(lead.businessName)}</strong>
+      <span>${escapeHtml(previewDetail)}</span>
+    </div>
+    <div class="content-card-meta">
+      <div>
+        <h2>${escapeHtml(previewTitle)}</h2>
+        <p>${escapeHtml(stageLabel(lead.stage))}</p>
+      </div>
+      <span class="status ${previewReady ? "status-ready" : "status-muted"}">${previewReady ? "Private" : "Pending"}</span>
+    </div>
+    ${controls ? `<div class="card-actions" style="margin-top:14px">${controls}</div>` : ""}
+  </article>`;
 }
 
 function renderPreviews(model: DashboardViewModel): string {
@@ -199,19 +258,81 @@ function renderPreviews(model: DashboardViewModel): string {
 }
 
 function renderAgents(): string {
+  const designerReady =
+    designerSkillAvailable();
+
   const agents = [
-    ["Manager", "Strategy and oversight", "Coordinates stage work and surfaces owner decisions.", true],
-    ["Scout", "Lead discovery", "Finds local businesses and records source evidence.", true],
-    ["Auditor", "Website evidence", "Runs deterministic checks and keeps facts separate from interpretation.", true],
-    ["Designer", "Website concepts", "Prepares validated private concepts when the provider is configured.", Boolean(config.groqApiKey || config.geminiApiKey)],
-    ["Sales", "Drafts and follow-up", "Creates outreach drafts but cannot send without human approval.", true],
-    ["Accounting", "Financial support", "Reads permitted Zoho Books data without creating transactions.", Boolean(config.zohoBooksMcpUrl)],
-    ["Legal", "Compliance support", "Supports review without signing or making binding decisions.", Boolean(config.agentEmails.legal)],
-  ] as const;
+    {
+      name: "Manager",
+      role: "Strategy and oversight",
+      detail: "Coordinates stage work and surfaces owner decisions.",
+      ready: true,
+    },
+    {
+      name: "Scout",
+      role: "Lead discovery",
+      detail: "Finds local businesses and records source evidence.",
+      ready: true,
+    },
+    {
+      name: "Auditor",
+      role: "Website evidence",
+      detail: "Runs deterministic checks and keeps facts separate from interpretation.",
+      ready: true,
+    },
+    {
+      name: "Designer",
+      role: "Website concepts",
+      detail: "Creates validated conversion-focused private concepts under the mandatory TechTactics UI Design skill.",
+      ready: designerReady,
+      status: designerReady
+        ? "Active · TechTactics UI Design"
+        : "Designer skill unavailable",
+    },
+    {
+      name: "Sales",
+      role: "Drafts and follow-up",
+      detail: "Creates outreach drafts but cannot send without human approval.",
+      ready: true,
+    },
+    {
+      name: "Accounting",
+      role: "Financial support",
+      detail: "Reads permitted Zoho Books data without creating transactions.",
+      ready: Boolean(
+        config.zohoBooksMcpUrl,
+      ),
+    },
+    {
+      name: "Legal",
+      role: "Compliance support",
+      detail: "Supports review without signing or making binding decisions.",
+      ready: Boolean(
+        config.agentEmails.legal,
+      ),
+    },
+  ];
+
   return `<div class="card-grid" aria-label="AI team">${agents
-    .map(
-      ([name, role, detail, ready]) => `<article class="content-card"><div class="agent-icon" aria-hidden="true">${name.slice(0, 1)}</div><div class="content-card-meta"><div><h2>${name}</h2><p>${role}</p></div><span class="status ${ready ? "status-ready" : "status-muted"}">${ready ? "Ready" : "Not configured"}</span></div><p>${detail}</p></article>`,
-    )
+    .map((agent) => {
+      const status =
+        agent.status ??
+        (agent.ready
+          ? "Ready"
+          : "Not configured");
+
+      return `<article class="content-card">
+        <div class="agent-icon" aria-hidden="true">${agent.name.slice(0, 1)}</div>
+        <div class="content-card-meta">
+          <div>
+            <h2>${escapeHtml(agent.name)}</h2>
+            <p>${escapeHtml(agent.role)}</p>
+          </div>
+          <span class="status ${agent.ready ? "status-ready" : "status-muted"}">${escapeHtml(status)}</span>
+        </div>
+        <p>${escapeHtml(agent.detail)}</p>
+      </article>`;
+    })
     .join("")}</div>`;
 }
 
@@ -311,25 +432,73 @@ function renderWorkspaceActions(lead: Lead): string {
 }
 
 function renderWorkspacePreview(model: DashboardViewModel, lead: Lead): string {
+  const preview = lead.preview;
   const href = previewHref(lead);
+
+  const designMode = preview?.designMode
+    ? preview.designMode.replace(
+        /^./,
+        (character) =>
+          character.toUpperCase(),
+      )
+    : undefined;
+
+  const previewDetail =
+    preview?.source === "uploaded"
+      ? preview.uploadedFileName ||
+        "Uploaded website"
+      : preview?.designSkill ===
+          "techtactics-ui-design"
+        ? `TechTactics UI Design${designMode ? ` · ${designMode}` : ""}`
+        : lead.salesAssets?.demoSubheadline ||
+          "No generated preview is active yet.";
+
+  const generateLabel =
+    preview?.source === "uploaded"
+      ? "Regenerate Generated Version"
+      : preview
+        ? "Regenerate"
+        : "Generate preview";
+
   const controls = [
     model.capabilities.generatePreview
-      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="generateLead(this.dataset.leadId)">Generate preview</button>`
+      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="generateLead(this.dataset.leadId)">${generateLabel}</button>`
       : "",
     model.capabilities.uploadPreview
-      ? `<label class="button-secondary">Upload ZIP<input class="sr-only" type="file" accept=".zip,application/zip" data-lead-id="${escapeHtml(lead.id)}" onchange="uploadPreview(this.dataset.leadId,this)"></label>`
+      ? `<label class="button-secondary">Upload My Website<input class="sr-only" type="file" accept=".zip,application/zip" data-lead-id="${escapeHtml(lead.id)}" onchange="uploadPreview(this.dataset.leadId,this)"></label>`
       : "",
-    model.capabilities.restoreGeneratedPreview && Boolean(lead.demoPath || lead.salesAssets)
-      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="restoreGeneratedPreview(this.dataset.leadId)">Restore generated</button>`
+    model.capabilities.restoreGeneratedPreview &&
+    preview?.source === "uploaded" &&
+    Boolean(preview.generatedAt)
+      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="restoreGeneratedPreview(this.dataset.leadId)">Restore Generated Version</button>`
       : "",
     href
-      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open private preview</a>`
+      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Preview Website</a>`
       : "",
   ]
     .filter(Boolean)
     .join("");
 
-  return `<section class="surface workspace-section"><h2>Private website preview</h2><div class="preview-thumb"><strong>${escapeHtml(lead.salesAssets?.demoHeadline || lead.businessName)}</strong><span>${escapeHtml(lead.salesAssets?.demoSubheadline || "No generated preview is active yet.")}</span></div>${controls ? `<div class="action-bar">${controls}</div>` : `<p class="safe-note">Preview controls are unavailable on this server. Existing generated artifacts remain untouched.</p>`}</section>`;
+  const source =
+    preview?.source === "uploaded"
+      ? "UPLOADED"
+      : preview?.source === "generated"
+        ? "GENERATED"
+        : "PENDING";
+
+  return `<section class="surface workspace-section">
+    <div class="section-head">
+      <h2>Private website preview</h2>
+      <span class="status ${preview ? "status-ready" : "status-muted"}">${source}</span>
+    </div>
+    <div class="preview-thumb">
+      <strong>${escapeHtml(lead.salesAssets?.demoHeadline || lead.businessName)}</strong>
+      <span>${escapeHtml(previewDetail)}</span>
+    </div>
+    ${controls
+      ? `<div class="action-bar">${controls}</div>`
+      : `<p class="safe-note">Preview controls are unavailable on this server. Existing generated artifacts remain untouched.</p>`}
+  </section>`;
 }
 
 function renderStageControl(lead: Lead): string {
