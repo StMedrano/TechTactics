@@ -286,6 +286,12 @@ function buildDesignerPrompt(
   lead: Lead,
   assets: SalesAssets
 ): string {
+  const canonicalExample =
+    deterministicWebsiteDesignSpec(
+      lead,
+      assets
+    );
+
   return `
 You are the TechTactics Web Designer.
 
@@ -298,6 +304,115 @@ It is not the prospect's official website.
 Return JSON only.
 
 The response MUST match the WebsiteDesignSpec contract.
+
+CANONICAL VALID WEBSITEDESIGNSPEC EXAMPLE
+=========================================
+
+The following JSON object already passes the application's
+WebsiteDesignSpec validator.
+
+Use exactly these key names and this nesting.
+
+You MAY change allowed design choices or copy only when the change is
+supported by VERIFIED BUSINESS RECORD or APPROVED DEMO CONTENT below.
+
+If uncertain, return this canonical object exactly.
+
+Do not add, rename, or omit required keys.
+
+${JSON.stringify(
+  canonicalExample,
+  null,
+  2
+)}
+
+STRICT JSON KEY RULES
+=====================
+
+Top-level keys ONLY:
+
+- "skill"
+- "mode"
+- "designRead"
+- "theme"
+- "hero"
+- "sections"
+- "quality"
+
+"designRead" keys ONLY:
+
+- "audience"
+- "tone"
+- "density"
+- "motion"
+
+"theme" keys ONLY:
+
+- "palette"
+- "radius"
+- "typography"
+
+"hero" keys ONLY:
+
+- "eyebrow" (optional)
+- "headline"
+- "subheadline"
+- "primaryCta"
+- "secondaryCta" (optional)
+
+Each section object may contain ONLY:
+
+- "type"
+- "title"
+- "body" (optional)
+- "items" (optional)
+
+"quality" keys ONLY:
+
+- "semanticHeadings"
+- "visibleFocus"
+- "reducedMotion"
+- "mobileFirst"
+
+Every quality value MUST be the literal JSON boolean true.
+
+Do not return false for any quality field.
+
+Do not use null for optional fields.
+Omit an optional field when it is not needed.
+
+Do not wrap the JSON in Markdown fences.
+
+Forbidden alias keys include:
+
+- "content"
+- "heading"
+- "summary"
+- "steps"
+- "subtitle"
+- "buttonLabel"
+- "ctaText"
+- "ctaLink"
+- "primaryCtaText"
+- "secondaryCtaText"
+- "hierarchyVerified"
+- "focalPointClear"
+- "typographyConsistent"
+- "spacingHarmonious"
+- "alignmentClean"
+- "contrastAccessible"
+- "responsiveBehaviorIntentional"
+- "mobileReadinessConfirmed"
+- "focusStatesDefined"
+- "accessibilityCompliant"
+- "contentWrappingRealistic"
+- "reducedMotionSupported"
+- "emptyErrorLoadingStatesHandled"
+- "consistencyMaintained"
+- "purposeBuiltNotGeneric"
+
+Never invent substitute property names.
+
 
 Required top-level keys:
 

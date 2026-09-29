@@ -217,6 +217,132 @@ describe(
     );
 
     it(
+      "gives providers an exact no-extra-keys WebsiteDesignSpec example",
+      async () => {
+        const rootDir =
+          await createResources();
+
+        const expected =
+          deterministicWebsiteDesignSpec(
+            lead,
+            assets
+          );
+
+        let capturedPrompt = "";
+
+        const result =
+          await generateWebsiteDesign(
+            lead,
+            assets,
+            {
+              rootDir,
+
+              primaryProvider:
+                "groq",
+
+              groqEnabled:
+                true,
+
+              geminiEnabled:
+                false,
+
+              groq:
+                async prompt => {
+                  capturedPrompt =
+                    prompt;
+
+                  return JSON.stringify(
+                    expected
+                  );
+                }
+            }
+          );
+
+        expect(result).toEqual(
+          expected
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          "CANONICAL VALID WEBSITEDESIGNSPEC EXAMPLE"
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"skill": "techtactics-ui-design"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"primaryCta": "Call Now"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"semanticHeadings": true'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          "Top-level keys ONLY"
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          "Each section object may contain ONLY"
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          "Forbidden alias keys"
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"content"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"heading"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"steps"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"buttonLabel"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          '"hierarchyVerified"'
+        );
+
+        expect(
+          capturedPrompt
+        ).toContain(
+          "Do not add, rename, or omit required keys."
+        );
+      }
+    );
+
+    it(
       "falls back from invalid Groq output to Gemini",
       async () => {
         const rootDir =
@@ -433,6 +559,121 @@ describe(
 
                     html:
                       "<iframe src='https://evil.example'></iframe>"
+                  })
+            }
+          );
+
+        expect(result).toEqual(
+          deterministicWebsiteDesignSpec(
+            lead,
+            assets
+          )
+        );
+      }
+    );
+
+    it(
+      "rejects production-style provider schema drift",
+      async () => {
+        const rootDir =
+          await createResources();
+
+        const result =
+          await generateWebsiteDesign(
+            lead,
+            assets,
+            {
+              rootDir,
+
+              primaryProvider:
+                "groq",
+
+              groqEnabled:
+                true,
+
+              geminiEnabled:
+                false,
+
+              groq:
+                async () =>
+                  JSON.stringify({
+                    skill:
+                      "techtactics-ui-design",
+
+                    mode:
+                      "persuade",
+
+                    designRead:
+                      false,
+
+                    theme: {
+                      palette:
+                        "professional-light",
+
+                      radius:
+                        "soft",
+
+                      typography:
+                        "system-modern",
+
+                      density:
+                        "moderate",
+
+                      motion:
+                        "restrained"
+                    },
+
+                    hero: {
+                      headline:
+                        assets.demoHeadline,
+
+                      subheadline:
+                        assets.demoSubheadline,
+
+                      summary:
+                        "Not allowed"
+                    },
+
+                    sections: [
+                      {
+                        type:
+                          "services",
+
+                        title:
+                          "Services",
+
+                        content:
+                          assets.demoServices
+                      },
+
+                      {
+                        type:
+                          "about",
+
+                        heading:
+                          "About",
+
+                        content:
+                          assets.businessSummary
+                      }
+                    ],
+
+                    quality: {
+                      semanticHeadings:
+                        false,
+
+                      visibleFocus:
+                        false,
+
+                      reducedMotion:
+                        false,
+
+                      mobileFirst:
+                        false,
+
+                      hierarchyVerified:
+                        true
+                    }
                   })
             }
           );
