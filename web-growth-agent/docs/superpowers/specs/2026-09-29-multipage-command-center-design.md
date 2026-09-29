@@ -123,4 +123,3 @@ No React conversion, client-side router, database change, or new production depe
 - Responsive tests lock the bottom navigation, More sheet, mobile lead cards, and removal of the desktop sidebar at narrow widths.
 - Safety tests prove approval and sending remain distinct, Books remains read-only, secrets are absent, and unavailable preview capabilities do not create dead controls.
 - Full typecheck, tests, production build, `git diff --check`, and desktop/mobile browser renders must pass before push.
-
