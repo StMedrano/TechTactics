@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyBrandLogo } from "../src/brand.js";
+import { parseDashboardPage, type DashboardPage } from "../src/dashboard-model.js";
 import { renderDashboard } from "../src/server.js";
 import type { Lead } from "../src/types.js";
 
@@ -15,107 +15,82 @@ const lead: Lead = {
   updatedAt: "2026-09-25T00:00:00.000Z",
   stage: "approved",
   approvedForOutreach: true,
+  approvedOutreachGeneratedAt: "2026-09-25T00:00:00.000Z",
+  salesAssets: {
+    generatedAt: "2026-09-25T00:00:00.000Z",
+    businessSummary: "Local plumbing company",
+    outreachDraft: "A private concept is ready.",
+    proposalMarkdown: "Proposal",
+    demoHeadline: "Plumbing help",
+    demoSubheadline: "Local and reliable",
+    demoServices: ["Repairs"],
+    recommendedPackage: "Pro",
+  },
   score: {
     total: 84,
     calculatedAt: "2026-09-25T00:00:00.000Z",
-    items: [
-      { key: "cta", label: "Weak call to action", points: 15, evidence: "Test" },
-      { key: "mobile", label: "Not mobile optimized", points: 20, evidence: "Test" }
-    ]
+    items: [{ key: "cta", label: "Weak call to action", points: 15, evidence: "Test" }],
   },
-  audit: {
-    checkedAt: "2026-09-25T00:00:00.000Z",
-    reachable: true,
-    https: true,
-    hasMetaDescription: false,
-    hasViewportMeta: false,
-    hasContactForm: false,
-    hasPhoneLink: true,
-    hasEmailLink: false,
-    hasPrimaryCta: false,
-    hasStructuredData: false,
-    hasAnalyticsMarker: false,
-    responseMs: 3200,
-    notes: ["Test audit"]
-  },
-  notes: []
+  notes: [],
 };
 
-describe("reference Web Growth Command Center UI", () => {
-  it("renders the dark two-column operations cockpit from the approved reference", () => {
-    const html = renderDashboard([lead]);
+function render(pathname: string): string {
+  return renderDashboard([lead], parseDashboardPage(pathname) as DashboardPage);
+}
 
-    for (const klass of [
-      "cockpit",
-      "sidebar",
-      "command-header",
-      "integration-strip",
-      "hero-command",
-      "metric-grid",
-      "pipeline-overview",
-      "recent-leads",
-      "detail-panel",
-      "lead-tabs",
-      "audit-demo-grid",
-      "outreach-grid"
-    ]) {
-      expect(html).toMatch(new RegExp(`class="[^"]*\\b${klass}\\b[^"]*"`));
-    }
+describe("multipage Web Growth Command Center UI", () => {
+  it("renders the approved desktop shell with real page links", () => {
+    const html = render("/");
 
-    for (const label of ["Overview", "Pipeline", "Leads", "Agents", "Inbox", "Accounting", "Legal", "Integrations", "Settings"]) {
-      expect(html).toContain(label);
-    }
-    for (const stage of ["Find", "Audit", "Demo", "Approve", "Contact", "Close"]) {
-      expect(html).toContain(stage);
-    }
-
-    expect(html).toContain("Grow Local Businesses Online");
-    expect(html).toContain("Recent Leads");
-    expect(html).toContain("Business Information");
-    expect(html).toContain("Opportunity Score");
-    expect(html).toContain("Website Audit Summary");
-    expect(html).toContain("Website Demo");
-    expect(html).toContain("Outreach Draft");
+    expect(html).toContain('class="app-shell"');
+    expect(html).toContain('class="sidebar"');
+    expect(html).toContain('class="topbar"');
+    expect(html).toContain('href="/leads"');
+    expect(html).toContain('href="/pipeline"');
+    expect(html).toContain('href="/previews"');
+    expect(html).toContain("Next best work");
+    expect(html).not.toContain("Recent Leads");
   });
 
-  it("uses the real TechTactics logo and existing smart-home hero asset", () => {
-    const html = applyBrandLogo(renderDashboard([lead]));
+  it("uses the TechTactics brand and approved operations palette", () => {
+    const html = render("/");
 
     expect(html).toContain("techtactics-logo.png");
     expect(html).toContain('class="brand-logo"');
-    expect(html).toContain("hero-smarthome-poster.png");
+    expect(html).toContain("--tt-black:#030407");
+    expect(html).toContain("--tt-slate:#384358");
+    expect(html).toContain("--tt-gold:#F7AD4E");
   });
 
-  it("reflects actual integrations rather than obsolete OpenAI/Google Places labels", () => {
-    const html = renderDashboard([lead]);
+  it("renders desktop lead rows and mobile lead cards on the Leads page", () => {
+    const html = render("/leads");
 
-    expect(html).toContain("Zoho Mail");
-    expect(html).toContain("Zoho Books");
-    expect(html).toContain("Gemini");
-    expect(html).toContain("OpenStreetMap");
-    expect(html).not.toContain(">OpenAI<");
-    expect(html).not.toContain(">Google Places<");
-  });
-
-  it("renders desktop lead table, mobile lead cards, and stacked mobile inspector", () => {
-    const html = renderDashboard([lead]);
-
-    expect(html).toContain('class="lead-table"');
-    expect(html).toContain('class="mobile-leads"');
+    expect(html).toContain("data-leads-table");
+    expect(html).toContain('class="mobile-card-list"');
     expect(html).toContain('class="lead-card"');
     expect(html).toContain("@media(max-width:860px)");
-    expect(html).toContain(".lead-table{display:none}");
-    expect(html).toContain(".mobile-leads{display:grid");
-    expect(html).toContain(".workspace-shell{grid-template-columns:1fr}");
-    expect(html).toContain(".detail-panel{position:static");
+    expect(html).toContain(".data-table{display:none}");
+    expect(html).toContain(".mobile-card-list{display:block}");
   });
 
-  it("keeps real approval and Zoho controls inside the reference visual system", () => {
-    const html = renderDashboard([lead]);
+  it("uses the four-item bottom bar and ergonomic More sheet on mobile", () => {
+    const html = render("/");
 
-    expect(html).toContain("Send Through Zoho");
-    expect(html).toContain("Move Stage");
-    expect(html).toContain("Human approval");
+    expect(html).toContain('aria-label="Primary mobile navigation"');
+    expect(html.match(/data-mobile-primary/g)).toHaveLength(4);
+    expect(html).toContain('data-more-toggle aria-expanded="false"');
+    expect(html).toContain("transform-origin:right bottom");
+    expect(html).toContain("220ms cubic-bezier(.23,1,.32,1)");
+    expect(html).toContain("@media(prefers-reduced-motion:reduce)");
+  });
+
+  it("keeps guarded outreach controls in the lead workspace", () => {
+    const html = render("/leads/lead-mobile");
+
+    expect(html).toContain("Send through Zoho");
+    expect(html).toContain("Send only the approved draft");
+    expect(html).toContain("Move to…");
+    expect(html).toContain("Approving this draft does not send it");
     expect(html).toContain("min-height:44px");
   });
 });

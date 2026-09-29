@@ -1,222 +1,41 @@
-import { config } from "./config.js";
-import { buildReport } from "./report.js";
-import { LeadStore } from "./store.js";
-import type { Lead, LeadStage } from "./types.js";
-import { escapeHtml } from "./utils.js";
+import {
+  buildDashboardViewModel,
+  parseDashboardPage,
+  type DashboardCapabilities,
+  type DashboardPage,
+} from "./dashboard-model.js";
+import { renderDashboardPage } from "./dashboard-pages.js";
+import { renderDashboardShell } from "./dashboard-shell.js";
+import type { Lead } from "./types.js";
 
-const HERO_IMAGE_URL = "https://raw.githubusercontent.com/StMedrano/TechTactics/main/client/public/assets/hero-smarthome-poster.png";
-
-const stageOrder: LeadStage[] = ["new", "audited", "qualified", "demo_ready", "approved", "contacted", "responded", "proposal", "won", "lost"];
-
-function count(report: ReturnType<typeof buildReport>, stage: keyof typeof report.counts): number {
-  return report.counts[stage] ?? 0;
-}
-
-function stageLabel(stage: LeadStage): string {
-  return stage.replaceAll("_", " ");
-}
-
-function stageTone(stage: LeadStage): string {
-  if (stage === "won") return "won";
-  if (stage === "approved") return "approved";
-  if (stage === "demo_ready") return "demo";
-  if (stage === "qualified") return "qualified";
-  if (stage === "audited") return "audited";
-  if (stage === "contacted" || stage === "responded" || stage === "proposal") return "contacted";
-  return "new";
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "TT";
-}
-
-function packageValue(lead: Lead): number {
-  const packageName = lead.salesAssets?.recommendedPackage ?? "Launch";
-  if (packageName === "Pro") return 4000;
-  if (packageName === "Growth") return 2000;
-  return 1000;
-}
-
-function nextStep(lead: Lead): string {
-  switch (lead.stage) {
-    case "new": return "Run audit";
-    case "audited": return "Review score";
-    case "qualified": return "Build demo";
-    case "demo_ready": return "Approve outreach";
-    case "approved": return "Send outreach";
-    case "contacted": return "Await reply";
-    case "responded": return "Prepare proposal";
-    case "proposal": return "Follow up";
-    case "won": return "Onboard client";
-    case "lost": return "Review outcome";
+function resolvePage(pageOrSelected?: DashboardPage | string): DashboardPage {
+  if (typeof pageOrSelected === "string") {
+    return (
+      parseDashboardPage(`/leads/${encodeURIComponent(pageOrSelected)}`) ??
+      (parseDashboardPage("/") as DashboardPage)
+    );
   }
+  return pageOrSelected ?? (parseDashboardPage("/") as DashboardPage);
 }
 
-function formattedDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+export function renderDashboard(
+  leads: Lead[],
+  pageOrSelected?: DashboardPage | string,
+  capabilities: Partial<DashboardCapabilities> = {},
+): string {
+  const page = resolvePage(pageOrSelected);
+  const model = buildDashboardViewModel(leads, page, capabilities);
+  return renderDashboardShell(model, renderDashboardPage(model));
 }
 
-function websiteHost(lead: Lead): string {
-  if (!lead.website) return "No website found";
-  try { return new URL(lead.website).hostname.replace(/^www\./, ""); } catch { return lead.website; }
-}
-
-function primarySignal(lead: Lead): string {
-  return lead.score?.items?.[0]?.label ?? (lead.website ? "Audit complete" : "Website not found");
-}
-
-function auditFindings(lead: Lead): string[] {
-  const audit = lead.audit;
-  if (!audit) return ["Audit not run yet"];
-  if (!audit.reachable) return ["Website unreachable"];
-  const findings: string[] = [];
-  if (!audit.hasViewportMeta) findings.push("Not mobile optimized");
-  if (!audit.hasPrimaryCta) findings.push("Weak or missing CTA");
-  if (!audit.hasMetaDescription) findings.push("Missing meta description");
-  if (!audit.hasContactForm && !audit.hasPhoneLink && !audit.hasEmailLink) findings.push("Limited lead capture");
-  if (!audit.hasStructuredData) findings.push("No structured data");
-  if ((audit.responseMs ?? 0) > 3000) findings.push("Slow initial response");
-  return findings.length ? findings.slice(0, 5) : ["No major technical issue detected"];
-}
-
-function positiveSignals(lead: Lead): string[] {
-  const audit = lead.audit;
-  const signals: string[] = [];
-  if (lead.website) signals.push("Website discovered");
-  if (audit?.https) signals.push("HTTPS enabled");
-  if (audit?.hasViewportMeta) signals.push("Mobile viewport present");
-  if (audit?.hasPrimaryCta) signals.push("Primary CTA detected");
-  if (audit?.hasContactForm || audit?.hasPhoneLink || audit?.hasEmailLink) signals.push("Contact path detected");
-  if (audit?.hasStructuredData) signals.push("Structured data present");
-  return signals.length ? signals.slice(0, 5) : ["Evidence still being collected"];
-}
-
-function actionMarkup(lead: Lead, prominent = false): string {
-  if (lead.stage === "demo_ready") {
-    return `<button class="${prominent ? "btn-orange" : "btn-small accent"}" onclick="approve('${escapeHtml(lead.id)}')">Approve Outreach</button>`;
-  }
-  if (lead.stage === "approved") {
-    if (lead.contactEmail) {
-      return `<button class="${prominent ? "btn-orange" : "btn-small accent"}" onclick="sendZoho('${escapeHtml(lead.id)}')">${prominent ? "Send Through Zoho" : "Send Outreach"}</button>`;
-    }
-    return `<button class="${prominent ? "btn-orange" : "btn-small accent"}" disabled title="Add a contact email before sending">${prominent ? "Send Through Zoho" : "Send Outreach"}</button>`;
-  }
-  return `<button class="${prominent ? "btn-orange" : "btn-small"}" disabled>${prominent ? "Send Through Zoho" : nextStep(lead)}</button>`;
-}
-
-function integrationCard(name: string, detail: string, ready: boolean, glyph: string): string {
-  return `<div class="integration-card"><div class="integration-icon">${glyph}</div><div class="integration-copy"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(detail)}</span></div><i class="connection-dot ${ready ? "ready" : "pending"}"></i></div>`;
-}
-
-function navIcon(path: string): string {
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><path d="${path}"/></svg>`;
-}
-
-function renderMoveStage(lead: Lead): string {
-  return `<label class="stage-control"><span class="sr-only">Move stage</span><select aria-label="Move Stage" onchange="if(this.value)stage('${escapeHtml(lead.id)}',this.value)"><option value="">Move Stage</option>${stageOrder.map((stage) => `<option value="${stage}" ${lead.stage === stage ? "disabled" : ""}>${stageLabel(stage)}</option>`).join("")}</select></label>`;
-}
-
-const CSS = String.raw`
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700&display=swap');
-:root{--bg:#020b18;--bg2:#061121;--panel:#091629;--panel2:#0c1b31;--panel3:#10213b;--line:#1a3150;--line2:#25446d;--text:#f4f7ff;--muted:#8ea2c0;--muted2:#60738f;--blue:#4b7dff;--blue2:#2d5fe6;--orange:#ff9c3b;--orange2:#ffb45d;--green:#42e6a4;--purple:#9a76ff;--yellow:#f9c85b;--red:#ff6b71;--radius:11px;--sidebar:224px;--gap:10px;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 58% -10%,#0a2346 0,transparent 35%),linear-gradient(180deg,#020a16,#04101f 60%,#020b18);color:var(--text);min-height:100vh}button,input,select,textarea{font:inherit}button,a,select{touch-action:manipulation}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}a{color:inherit;text-decoration:none}::selection{background:#ff9c3b;color:#08111f}:focus-visible{outline:2px solid var(--orange);outline-offset:2px}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-.cockpit{min-height:100vh;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);gap:var(--gap);padding:8px}.sidebar{height:calc(100vh - 16px);position:sticky;top:8px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#061223,#041020);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 46px rgba(0,0,0,.22)}.brand-block{height:92px;margin:8px;border:1px solid #1d3a60;border-radius:10px;display:grid;place-items:center;background:linear-gradient(180deg,#07172b,#051223)}.brand-mark{width:174px;height:60px;border-radius:8px;background:#07172b;color:#ff9c3b;display:grid;place-items:center;font-weight:800;letter-spacing:.1em}.logo-wrap{width:178px;height:62px;display:grid;place-items:center}.logo-wrap img{width:100%;height:100%;object-fit:contain}.nav{padding:8px 6px;display:grid;gap:5px}.nav a{min-height:45px;border-radius:8px;padding:0 12px;display:flex;align-items:center;gap:12px;color:#a9b8ce;font-size:12px;font-weight:500;transition:background .16s ease,color .16s ease,transform .16s ease}.nav a svg{width:19px;height:19px;stroke-width:1.8}.nav a:hover{background:#0d2038;color:#fff;transform:translateX(1px)}.nav a.active{background:linear-gradient(90deg,#142949,#173052);color:var(--orange);box-shadow:inset 3px 0 0 var(--orange),inset 0 0 0 1px #1f3a60}.nav .badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--orange);color:#111827;display:grid;place-items:center;font-size:10px;font-weight:800}.automate-card{margin:auto 14px 16px;border:1px solid #24456e;border-radius:9px;padding:15px;background:linear-gradient(135deg,#07192d,#08152a 58%,#0c2550);position:relative;overflow:hidden}.automate-card::after{content:"↗";position:absolute;right:14px;top:11px;font-size:28px;color:#4d8cff}.automate-card strong{display:block;color:#8fb8ff;font-size:11px}.automate-card b{display:block;font-family:Sora,sans-serif;font-size:13px;margin-top:4px}.automate-card p{margin:12px 0 0;color:#7e92af;font-size:9px;line-height:1.55;max-width:130px}.admin{border-top:1px solid #142b47;margin:0 14px;padding:16px 4px;display:flex;align-items:center;gap:10px}.admin-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#6b7cff,#3355b9);font-weight:800;font-size:11px}.admin strong{display:block;font-size:11px}.admin span{display:block;color:#7187a7;font-size:9px;margin-top:2px}
-.main{min-width:0}.command-header{min-height:88px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(180deg,#071426,#051120);display:flex;align-items:center;gap:16px;padding:12px 18px;margin-bottom:var(--gap)}.command-title{min-width:340px;flex:1}.command-title h1{font-family:Sora,sans-serif;font-size:27px;letter-spacing:-.025em;margin:0 0 4px}.command-title p{margin:0;color:#aebddd;font-size:15px;letter-spacing:.01em}.integration-strip{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}.integration-strip::-webkit-scrollbar{display:none}.integration-card{height:56px;min-width:144px;border:1px solid #173557;border-radius:8px;background:#0a1a30;display:flex;align-items:center;gap:8px;padding:0 10px}.integration-icon{width:32px;height:32px;border-radius:7px;display:grid;place-items:center;background:#102b50;color:#80a8ff;font-size:16px}.integration-copy{min-width:0;flex:1}.integration-copy strong{display:block;font-size:10px;color:#eef4ff;white-space:nowrap}.integration-copy span{display:block;margin-top:3px;font-size:8px;color:#70d8b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.connection-dot{width:8px;height:8px;border-radius:50%;background:#53657f;box-shadow:0 0 0 4px rgba(83,101,127,.08)}.connection-dot.ready{background:var(--green);box-shadow:0 0 0 4px rgba(66,230,164,.08)}.connection-dot.pending{background:var(--orange)}.bell{width:44px;height:44px;border-left:1px solid #17314e;display:grid;place-items:center;color:#b9c8da;font-size:19px}
-.workspace-shell{display:grid;grid-template-columns:minmax(720px,1.55fr) minmax(440px,.95fr);gap:var(--gap);align-items:start}.left-stack,.detail-panel{min-width:0}.hero-command{min-height:165px;border:1px solid #2f5fa2;border-radius:10px;position:relative;overflow:hidden;background-image:linear-gradient(90deg,rgba(8,21,46,.97) 0%,rgba(11,30,62,.88) 46%,rgba(7,18,35,.18) 80%),url('${HERO_IMAGE_URL}');background-size:cover;background-position:center 54%;padding:22px 28px;margin-bottom:var(--gap)}.hero-command h2{font-family:Sora,sans-serif;font-size:27px;letter-spacing:-.03em;margin:0 0 6px}.hero-command p{margin:0;color:#c7d4eb;font-size:13px;line-height:1.5;max-width:520px}.hero-actions{display:flex;gap:10px;margin-top:16px}.btn-orange,.btn-ghost,.btn-small,.icon-button{border-radius:7px;border:1px solid transparent;min-height:40px;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:7px}.btn-orange{background:linear-gradient(180deg,var(--orange2),var(--orange));color:#14110d;padding:0 15px;box-shadow:0 6px 18px rgba(255,156,59,.2)}.btn-orange:hover{filter:brightness(1.04)}.btn-ghost{background:#0a1930;border-color:#34527f;color:#e6edfa;padding:0 14px}.hero-callout{position:absolute;right:26px;bottom:20px;border:1px solid #ff9c3b;border-radius:10px;padding:11px 14px;background:rgba(15,31,58,.84);box-shadow:0 0 28px rgba(255,156,59,.11);min-width:180px}.hero-callout strong{color:var(--orange);font-size:10px}.hero-callout span{display:block;color:#d7e1f2;font-size:9px;margin-top:4px}.metric-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:var(--gap)}.metric-card{min-height:82px;border:1px solid #1b365a;border-radius:8px;background:linear-gradient(180deg,#0b1b31,#081629);padding:12px;display:flex;align-items:center;gap:11px}.metric-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:1px solid currentColor;background:#10284a;color:#6ca0ff;font-size:18px}.metric-card:nth-child(3) .metric-icon{color:var(--orange);background:#2a211b}.metric-card:nth-child(4) .metric-icon{color:var(--green);background:#0d2a27}.metric-card:nth-child(5) .metric-icon{color:#f1b54e;background:#302617}.metric-copy span{display:block;color:#9fb0c8;font-size:8px}.metric-copy strong{display:block;font-family:Sora,sans-serif;font-size:19px;margin-top:3px}.metric-copy small{display:block;color:#55d99b;font-size:8px;margin-top:2px}
-.panel{border:1px solid var(--line);border-radius:9px;background:linear-gradient(180deg,#081629,#061321);overflow:hidden}.panel-title{height:42px;padding:0 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #142b48}.panel-title h3{font-size:12px;margin:0}.panel-title small{color:#7290b8;font-size:8px}.pipeline-overview{margin-bottom:var(--gap)}.pipeline-cards{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:11px}.pipe-stage{min-height:58px;border:1px solid #1c385d;border-radius:7px;background:#0b1b31;padding:8px;display:flex;align-items:center;gap:7px;position:relative}.pipe-stage:not(:last-child)::after{content:"›";position:absolute;right:-8px;color:#91a4bd;font-size:18px;z-index:2}.pipe-icon{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#102b50;border:1px solid #3763a1;color:#8fb4ff;font-size:11px}.pipe-stage.approved .pipe-icon{background:#0d3129;border-color:#218d6f;color:var(--green)}.pipe-stage.won .pipe-icon{background:#322616;border-color:#806021;color:#f4bf5b}.pipe-stage.qualified .pipe-icon{background:#241d45;border-color:#6957ba;color:#b6a2ff}.pipe-stage span{display:block;color:#9caec5;font-size:8px}.pipe-stage strong{display:block;font-size:12px;margin-top:2px}
-.recent-leads{margin-bottom:var(--gap)}.lead-toolbar{display:flex;gap:8px;align-items:center}.search-box{height:31px;width:210px;border:1px solid #28466d;border-radius:6px;background:#0a1930;color:#c9d6e9;padding:0 10px;font-size:9px}.filter-btn{height:31px;border:1px solid #28466d;border-radius:6px;background:#0a1930;color:#c9d6e9;padding:0 10px;font-size:9px}.lead-table{width:100%;border-collapse:collapse}.lead-table th{padding:7px 9px;color:#6f85a4;font-size:7px;font-weight:600;text-align:left;border-bottom:1px solid #142b48}.lead-table td{padding:8px 9px;font-size:8px;border-bottom:1px solid #10243d;color:#b9c7da;vertical-align:middle}.lead-table tr:last-child td{border-bottom:0}.lead-table tr.selected{background:linear-gradient(90deg,rgba(255,156,59,.08),transparent);box-shadow:inset 1px 0 0 var(--orange)}.business-cell{display:flex;align-items:center;gap:7px}.avatar{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#274b98;color:white;font-size:8px;font-weight:800}.business-cell strong{display:block;color:#eef4ff;font-size:8px}.business-cell span{display:block;color:#647b9b;font-size:7px;margin-top:2px}.score-chip{min-width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1px solid #53d69e;color:#d9fff0;font-size:8px}.stage-pill{height:20px;padding:0 7px;border-radius:999px;display:inline-flex;align-items:center;font-size:7px;font-weight:700;text-transform:capitalize;border:1px solid #34547f;background:#10233d;color:#b6c8e1}.stage-pill.approved{border-color:#278f72;background:#0d2b27;color:#79e3bd}.stage-pill.demo{border-color:#3d6fc6;color:#91b8ff}.stage-pill.qualified{border-color:#7658d0;background:#211a3d;color:#b8a6ff}.stage-pill.won{border-color:#9a7026;background:#2d2315;color:#f1c46c}.value{color:#f1f5fb;font-weight:600}.row-action{height:27px;border:0;border-radius:5px;background:var(--orange);color:#14110d;padding:0 9px;font-size:7px;font-weight:800}.row-link{color:#7da7ff;font-weight:600}.mobile-leads{display:none}.lead-card{border-bottom:1px solid #142b48;padding:13px}.lead-card:last-child{border-bottom:0}.lead-card-head{display:flex;justify-content:space-between;gap:10px}.lead-card h4{font-size:12px;margin:0}.lead-card p{font-size:9px;color:#748aa8;margin:4px 0 0}.lead-card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.lead-card-grid div{background:#0a1930;border:1px solid #163152;border-radius:6px;padding:8px}.lead-card-grid span{display:block;color:#6f85a4;font-size:7px}.lead-card-grid strong{display:block;font-size:9px;margin-top:3px}.lead-card-actions{display:flex;gap:7px;flex-wrap:wrap}
-.bottom-panels{display:grid;grid-template-columns:1.7fr 1fr;gap:var(--gap)}.agent-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px 18px;padding:10px 12px}.agent-row{display:flex;align-items:center;gap:8px;padding:6px 0}.agent-icon{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#24488e;color:#fff;font-size:9px}.agent-row:nth-child(3n) .agent-icon{background:#5e3b9d}.agent-copy{flex:1}.agent-copy strong{display:block;font-size:8px}.agent-copy span{display:block;color:#6f85a4;font-size:7px;margin-top:2px}.agent-state{color:#58e3aa;font-size:7px}.integration-list{padding:8px 12px}.integration-row{height:34px;border:1px solid #173152;background:#09182b;border-radius:6px;margin:5px 0;padding:0 8px;display:flex;align-items:center;gap:8px}.integration-row strong{font-size:8px}.integration-row span{display:block;color:#57dca7;font-size:7px;margin-top:2px}.integration-row i{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--green)}
-.detail-panel{position:sticky;top:8px;border:1px solid var(--line);border-radius:11px;background:linear-gradient(180deg,#061322,#04101c);overflow:hidden;min-height:calc(100vh - 16px)}.detail-toolbar{height:49px;padding:0 11px;border-bottom:1px solid #142b48;display:flex;align-items:center;gap:8px}.back-link{font-size:8px;color:#b8c6da;margin-right:auto}.icon-button{width:31px;height:31px;background:#091a30;border-color:#1c3a60;color:#9eb0c8}.edit-btn{height:31px;border:1px solid #274669;border-radius:6px;background:#0b1b31;color:#dbe5f4;padding:0 11px;font-size:8px}.stage-control select{height:31px;border:1px solid #274669;border-radius:6px;background:#0b1b31;color:#dbe5f4;padding:0 25px 0 10px;font-size:8px}.detail-head{padding:12px 14px 9px;display:flex;align-items:center;gap:10px}.detail-avatar{width:45px;height:45px;border-radius:50%;display:grid;place-items:center;background:#173766;border:1px solid #4a80db;color:#cfe0ff;font-weight:700}.detail-name{flex:1;min-width:0}.detail-name h2{margin:0;font-size:15px}.detail-name p{margin:4px 0 0;color:#88a0c0;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lead-tabs{display:flex;overflow-x:auto;border-bottom:1px solid #142b48;padding:0 8px;scrollbar-width:none}.lead-tabs::-webkit-scrollbar{display:none}.lead-tabs a{height:35px;min-width:74px;padding:0 9px;display:grid;place-items:center;color:#7287a5;font-size:8px;border-bottom:2px solid transparent;white-space:nowrap}.lead-tabs a.active{color:var(--orange);border-bottom-color:var(--orange)}.detail-content{padding:9px}.detail-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:8px;margin-bottom:8px}.detail-card{border:1px solid #142d4b;border-radius:8px;background:#08172a;overflow:hidden}.detail-card-head{height:36px;padding:0 10px;border-bottom:1px solid #132943;display:flex;align-items:center;justify-content:space-between}.detail-card-head h3{font-size:9px;margin:0}.detail-card-body{padding:10px}.info-list{display:grid;gap:7px}.info-line{display:flex;gap:7px;align-items:flex-start;color:#a9bad0;font-size:8px}.info-line b{color:#dbe6f5;font-weight:600}.score-ring{width:102px;height:102px;border-radius:50%;margin:6px auto 10px;display:grid;place-items:center;background:conic-gradient(var(--green) calc(var(--score)*1%),#19304e 0);position:relative}.score-ring::after{content:"";position:absolute;width:78px;height:78px;border-radius:50%;background:#08172a}.score-ring strong{position:relative;z-index:1;font-family:Sora,sans-serif;font-size:24px}.score-ring span{position:absolute;z-index:1;margin-top:39px;font-size:7px;color:#8ea4c1}.score-signals{display:grid;gap:6px}.score-signal{font-size:7px;color:#a8bad0;display:flex;gap:6px}.score-signal i{width:10px;height:10px;border-radius:50%;background:#55e0a6;color:#042419;display:grid;place-items:center;font-style:normal;font-size:7px}.audit-demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}.audit-summary{display:grid;grid-template-columns:104px 1fr;gap:8px}.mini-browser{height:112px;border:1px solid #1c385d;border-radius:6px;overflow:hidden;background:linear-gradient(180deg,#e7edf6 0 11px,#15233a 11px 100%);position:relative}.mini-browser::after{content:"WEBSITE AUDIT";position:absolute;inset:30px 9px auto;color:#e8edf5;font-family:Sora,sans-serif;font-size:12px;line-height:1.05}.audit-list{display:grid;gap:5px}.audit-item{display:flex;gap:6px;color:#99abc3;font-size:7px;line-height:1.35}.audit-item i{width:7px;height:7px;margin-top:2px;border-radius:2px;background:var(--orange);flex:0 0 auto}.demo-thumb{height:112px;border:1px solid #1c385d;border-radius:6px;overflow:hidden;background-image:linear-gradient(90deg,rgba(6,17,33,.88),rgba(4,12,24,.28)),url('${HERO_IMAGE_URL}');background-size:cover;background-position:center;position:relative;padding:17px 11px}.demo-thumb strong{display:block;font-family:Sora,sans-serif;font-size:13px;max-width:120px}.demo-thumb span{display:block;color:#d2dcec;font-size:7px;margin-top:5px}.demo-thumb b{display:inline-block;background:var(--orange);color:#17120c;border-radius:4px;padding:4px 8px;font-size:6px;margin-top:8px}.card-footer-btn{margin-top:8px;height:28px;border:1px solid #27486f;border-radius:6px;background:#0d2038;color:#c2d0e2;padding:0 9px;font-size:7px}.pipeline-detail{padding:12px}.stage-track{height:54px;display:flex;align-items:center}.track-node{flex:1;position:relative;text-align:center}.track-node:not(:last-child)::after{content:"";height:2px;background:#26466f;position:absolute;left:50%;right:-50%;top:9px}.track-dot{position:relative;z-index:2;margin:0 auto;width:18px;height:18px;border-radius:50%;background:#31455f;border:2px solid #6c82a0}.track-node.done .track-dot{background:#2c68c7;border-color:#74a4ff}.track-node.current .track-dot{background:var(--green);border-color:#8df0c9}.track-node span{display:block;color:#6f84a3;font-size:6px;margin-top:5px}.track-node.current span{color:#c9d7e8}.outreach-grid{display:grid;grid-template-columns:1fr 152px;gap:8px}.draft-fields{display:grid;gap:7px}.field-label{font-size:7px;color:#6d83a2}.field-input,.field-textarea{width:100%;border:1px solid #1d3a5f;border-radius:6px;background:#09182b;color:#b8c8da;padding:7px 8px;font-size:7px}.field-textarea{height:72px;resize:none;line-height:1.45}.personalization{border-left:1px solid #142b48;padding-left:10px}.personalization strong{font-size:8px}.personalization ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:7px}.personalization li{font-size:7px;color:#9eb1c7;display:flex;gap:6px}.personalization li::before{content:"✓";width:11px;height:11px;border-radius:50%;display:grid;place-items:center;background:#55e0a6;color:#042419;font-size:7px;flex:0 0 auto}.mobile-menu{display:none}
-@media(max-width:1380px){:root{--sidebar:205px}.command-title{min-width:300px}.integration-card{min-width:126px}.workspace-shell{grid-template-columns:minmax(640px,1.35fr) minmax(410px,.95fr)}.metric-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.metric-card{padding:9px}.pipeline-cards{grid-template-columns:repeat(4,1fr)}.pipe-stage:nth-child(4)::after{display:none}.pipe-stage:nth-child(n+5){margin-top:2px}}
-@media(max-width:1080px){.workspace-shell{grid-template-columns:1fr}.detail-panel{position:static;min-height:0}.command-header{align-items:flex-start;flex-wrap:wrap}.command-title{min-width:100%;}.integration-strip{width:100%}.metric-grid{grid-template-columns:repeat(3,1fr)}.bottom-panels{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:860px){body{padding-bottom:12px}.cockpit{display:block;padding:0}.sidebar{position:fixed;left:-244px;top:0;width:224px;height:100vh;border-radius:0;z-index:80;transition:left .2s ease}.sidebar.open{left:0}.main{padding:8px}.command-header{min-height:70px;padding:10px 11px}.command-title{display:flex;align-items:center;gap:9px}.command-title h1{font-size:16px}.command-title p{display:none}.mobile-menu{display:grid;width:38px;height:38px;place-items:center;border:1px solid #254467;border-radius:7px;background:#0b1b31;color:#d7e3f2}.bell{display:none}.integration-strip{order:3}.integration-card{min-width:126px}.workspace-shell{grid-template-columns:1fr}.detail-panel{position:static;min-height:0}.hero-command{min-height:210px;padding:18px}.hero-command h2{font-size:22px;max-width:310px}.hero-command p{font-size:11px;max-width:330px}.hero-callout{right:12px;bottom:12px;min-width:150px}.metric-grid{grid-template-columns:repeat(2,1fr)}.metric-card{min-height:74px}.pipeline-cards{grid-template-columns:repeat(2,1fr)}.pipe-stage:nth-child(even)::after{display:none}.lead-table{display:none}.mobile-leads{display:grid}.panel-title{height:auto;min-height:42px;padding:8px 10px;align-items:flex-start;gap:8px}.lead-toolbar{width:100%;justify-content:flex-end}.search-box{width:min(190px,56vw)}.bottom-panels{grid-template-columns:1fr}.agent-grid{grid-template-columns:1fr}.detail-grid,.audit-demo-grid,.outreach-grid{grid-template-columns:1fr}.personalization{border-left:0;border-top:1px solid #142b48;padding:10px 0 0}.detail-toolbar{flex-wrap:wrap;height:auto;min-height:49px;padding:8px}.back-link{width:100%}.btn-orange,.btn-ghost,.edit-btn,.stage-control select{min-height:44px}.audit-summary{grid-template-columns:96px 1fr}}
-@media(max-width:520px){.main{padding:5px}.command-header{border-radius:9px}.integration-card{min-width:118px}.hero-actions{display:grid;grid-template-columns:1fr 1fr}.hero-callout{position:static;margin-top:14px;width:max-content;max-width:100%}.metric-grid{gap:6px}.metric-card{gap:8px}.metric-icon{width:36px;height:36px}.metric-copy strong{font-size:16px}.pipeline-cards{gap:5px}.detail-grid{grid-template-columns:1fr}.outreach-grid{grid-template-columns:1fr}.lead-card-grid{grid-template-columns:1fr 1fr}.lead-card-grid div:last-child{grid-column:1/-1}.detail-head{align-items:flex-start}.detail-name p{white-space:normal}.score-ring{width:92px;height:92px}.score-ring::after{width:70px;height:70px}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
-`;
-
-export function renderDashboard(leads: Awaited<ReturnType<LeadStore["all"]>>, selectedLeadId?: string): string {
-  const report = buildReport(leads);
-  const sorted = [...leads].sort((a, b) => (b.score?.total ?? -1) - (a.score?.total ?? -1));
-  const active = sorted.find((lead) => lead.id === selectedLeadId) ?? sorted[0];
-  const activeIndex = active ? sorted.findIndex((lead) => lead.id === active.id) : -1;
-  const previous = activeIndex > 0 ? sorted[activeIndex - 1] : sorted[sorted.length - 1];
-  const next = activeIndex >= 0 && activeIndex < sorted.length - 1 ? sorted[activeIndex + 1] : sorted[0];
-
-  const integrationsTop = [
-    integrationCard("Zoho Mail", config.zohoMcpUrl ? "Connected" : "Not configured", Boolean(config.zohoMcpUrl), "✉"),
-    integrationCard("Zoho Books", config.zohoBooksMcpUrl ? "Connected · Read Only" : "Not configured", Boolean(config.zohoBooksMcpUrl), "▧"),
-    integrationCard("Gemini", config.geminiApiKey ? "Connected" : "Not configured", Boolean(config.geminiApiKey), "✦"),
-    integrationCard("OpenStreetMap", `${config.overpassUrls.length} endpoints ready`, config.overpassUrls.length > 0, "⌖")
-  ].join("");
-
-  const metrics = [
-    ["Pipeline Value", `$${report.projectedPipelineValue.toLocaleString()}`, "Projected", "$"],
-    ["Total Leads", String(report.totalLeads), "Active pipeline", "◎"],
-    ["Demo Ready", String(report.counts.demo_ready), "Awaiting review", "▶"],
-    ["Approved", String(report.counts.approved), "Ready for contact", "✓"],
-    ["Won", String(report.counts.won), "Closed customers", "♛"]
-  ].map(([label, value, note, icon]) => `<article class="metric-card"><div class="metric-icon">${icon}</div><div class="metric-copy"><span>${label}</span><strong>${value}</strong><small>${note}</small></div></article>`).join("");
-
-  const pipelineStages: Array<[LeadStage, string, string]> = [
-    ["new", "New", "◎"], ["audited", "Audited", "◉"], ["qualified", "Qualified", "✦"], ["demo_ready", "Demo Ready", "▶"], ["approved", "Approved", "✓"], ["contacted", "Contacted", "➤"], ["won", "Won", "♛"]
-  ];
-  const pipeline = pipelineStages.map(([stage, label, icon]) => `<div class="pipe-stage ${stageTone(stage)}"><div class="pipe-icon">${icon}</div><div><span>${label}</span><strong>${count(report, stage)}</strong></div></div>`).join("");
-
-  const rows = sorted.slice(0, 8).map((lead) => `<tr class="${active?.id === lead.id ? "selected" : ""}">
-    <td><a class="business-cell" href="/?lead=${encodeURIComponent(lead.id)}#detail"><span class="avatar">${escapeHtml(initials(lead.businessName))}</span><span><strong>${escapeHtml(lead.businessName)}</strong><span>${escapeHtml(lead.category || "Local business")}</span></span></a></td>
-    <td><span class="score-chip">${lead.score?.total ?? "—"}</span></td>
-    <td><span class="stage-pill ${stageTone(lead.stage)}">${escapeHtml(stageLabel(lead.stage))}</span></td>
-    <td>${escapeHtml(lead.category || "—")}</td>
-    <td>${lead.website ? `<a class="row-link" href="${escapeHtml(lead.website)}" target="_blank" rel="noreferrer">${escapeHtml(websiteHost(lead))}</a>` : `<span class="muted">Not found</span>`}</td>
-    <td class="value">$${packageValue(lead).toLocaleString()}</td>
-    <td>${escapeHtml(nextStep(lead))}</td>
-    <td>${formattedDate(lead.updatedAt)}</td>
-    <td>${lead.stage === "approved" && lead.contactEmail ? `<button class="row-action" onclick="sendZoho('${escapeHtml(lead.id)}')">Send Outreach</button>` : `<a class="row-link" href="/?lead=${encodeURIComponent(lead.id)}#detail">Open</a>`}</td>
-  </tr>`).join("");
-
-  const mobileCards = sorted.slice(0, 8).map((lead) => `<article class="lead-card"><div class="lead-card-head"><div><h4>${escapeHtml(lead.businessName)}</h4><p>${escapeHtml(lead.category || "Local business")} · ${escapeHtml(lead.market || "Market pending")}</p></div><span class="stage-pill ${stageTone(lead.stage)}">${escapeHtml(stageLabel(lead.stage))}</span></div><div class="lead-card-grid"><div><span>Score</span><strong>${lead.score?.total ?? "—"}</strong></div><div><span>Value</span><strong>$${packageValue(lead).toLocaleString()}</strong></div><div><span>Next</span><strong>${escapeHtml(nextStep(lead))}</strong></div></div><div class="lead-card-actions"><a class="btn-ghost" href="/?lead=${encodeURIComponent(lead.id)}#detail">Open Lead</a>${lead.stage === "approved" && lead.contactEmail ? `<button class="btn-orange" onclick="sendZoho('${escapeHtml(lead.id)}')">Send Outreach</button>` : ""}</div></article>`).join("");
-
-  const agentRows = [
-    ["Manager", "Orchestrates strategy and oversight", true], ["Sales", "Manages outreach and follow-ups", true], ["Scout", "Finds qualified local businesses", true], ["Accounting", "Tracks deals and invoice support", Boolean(config.zohoBooksMcpUrl)], ["Auditor", "Analyzes websites and opportunities", true], ["Legal", "Reviews compliance and agreements", Boolean(config.agentEmails.legal)], ["Designer", "Creates website demos and improvement plans", Boolean(config.geminiApiKey)]
-  ].map(([name, role, activeState]) => `<div class="agent-row"><div class="agent-icon">${String(name).slice(0,1)}</div><div class="agent-copy"><strong>${name}</strong><span>${role}</span></div><span class="agent-state">● ${activeState ? "Active" : "Pending"}</span></div>`).join("");
-
-  const integrationRows = [
-    ["Zoho Mail (MCP)", Boolean(config.zohoMcpUrl), config.zohoMcpUrl ? "Connected" : "Not configured"],
-    ["Zoho Books (MCP)", Boolean(config.zohoBooksMcpUrl), config.zohoBooksMcpUrl ? "Connected · Read Only" : "Not configured"],
-    ["Gemini", Boolean(config.geminiApiKey), config.geminiApiKey ? config.geminiModel : "Not configured"],
-    ["OpenStreetMap", config.overpassUrls.length > 0, `${config.overpassUrls.length} endpoints configured`]
-  ].map(([name, ready, detail]) => `<div class="integration-row"><div class="integration-icon">●</div><div><strong>${name}</strong><span>${detail}</span></div><i style="background:${ready ? "var(--green)" : "var(--orange)"}"></i></div>`).join("");
-
-  const findings = active ? auditFindings(active) : ["No lead selected"];
-  const positives = active ? positiveSignals(active) : ["No lead selected"];
-  const score = active?.score?.total ?? 0;
-  const demoReady = Boolean(active?.demoPath || active?.salesAssets);
-  const outreachSubject = active ? `Website idea for ${active.businessName}` : "Select a lead";
-  const outreachMessage = active?.salesAssets?.outreachDraft ?? (active ? `Generate sales assets to create a personalized outreach draft for ${active.businessName}.` : "Select a lead to prepare outreach.");
-
-  const detail = active ? `<aside class="detail-panel" id="detail"><div class="detail-toolbar"><a class="back-link" href="#leads">← &nbsp; Back to Leads</a>${previous ? `<a class="icon-button" aria-label="Previous lead" href="/?lead=${encodeURIComponent(previous.id)}#detail">‹</a>` : ""}${next ? `<a class="icon-button" aria-label="Next lead" href="/?lead=${encodeURIComponent(next.id)}#detail">›</a>` : ""}<button class="edit-btn" onclick="alert('Lead editing is the next workflow module.')">Edit</button>${renderMoveStage(active)}${actionMarkup(active, true)}</div>
-    <div class="detail-head"><div class="detail-avatar">${escapeHtml(initials(active.businessName))}</div><div class="detail-name"><h2>${escapeHtml(active.businessName)} <span class="stage-pill ${stageTone(active.stage)}">${escapeHtml(stageLabel(active.stage))}</span></h2><p>${escapeHtml(active.category || "Local business")} &nbsp; · &nbsp; ${escapeHtml(active.market || "Market pending")} &nbsp; · &nbsp; ${escapeHtml(websiteHost(active))}</p></div></div>
-    <nav class="lead-tabs"><a class="active" href="#detail-overview">Overview</a><a href="#audit">Website Audit</a><a href="#demo">Demo</a><a href="#outreach">Outreach</a><a href="#activity">Activity</a><a href="#notes">Notes</a></nav>
-    <div class="detail-content"><div class="detail-grid" id="detail-overview"><section class="detail-card"><div class="detail-card-head"><h3>Business Information</h3><button class="edit-btn" onclick="alert('Lead editing is the next workflow module.')">Edit</button></div><div class="detail-card-body info-list"><div class="info-line">⌖ <b>${escapeHtml(active.market || "Market pending")}</b></div><div class="info-line">▣ <b>${escapeHtml(active.category || "Category pending")}</b></div><div class="info-line">☎ <b>${escapeHtml(active.phone || "Phone not captured")}</b></div><div class="info-line">◎ <b>${active.website ? `<a class="row-link" href="${escapeHtml(active.website)}" target="_blank" rel="noreferrer">${escapeHtml(websiteHost(active))}</a>` : "Website not found"}</b></div><div class="info-line">✉ <b>${escapeHtml(active.contactEmail || "Email not captured")}</b></div><div class="info-line">◫ <b>${escapeHtml(primarySignal(active))}</b></div></div></section><section class="detail-card"><div class="detail-card-head"><h3>Opportunity Score</h3><span>ⓘ</span></div><div class="detail-card-body"><div class="score-ring" style="--score:${Math.min(100, Math.max(0, score))}"><strong>${score}</strong><span>/100</span></div><div class="score-signals">${positives.map((signal) => `<div class="score-signal"><i>✓</i>${escapeHtml(signal)}</div>`).join("")}</div></div></section></div>
-    <div class="audit-demo-grid"><section class="detail-card" id="audit"><div class="detail-card-head"><h3>Website Audit Summary</h3><span>${score} / 100</span></div><div class="detail-card-body"><div class="audit-summary"><div class="mini-browser"></div><div class="audit-list">${findings.map((finding) => `<div class="audit-item"><i></i>${escapeHtml(finding)}</div>`).join("")}</div></div><button class="card-footer-btn" onclick="document.querySelector('#audit').scrollIntoView({behavior:'smooth'})">View Full Audit →</button></div></section><section class="detail-card" id="demo"><div class="detail-card-head"><h3>Website Demo</h3><span>${demoReady ? "Preview ready" : "Not generated"}</span></div><div class="detail-card-body"><div class="demo-thumb"><strong>${escapeHtml(active.businessName)}</strong><span>${escapeHtml(active.category || "Local business")} · ${escapeHtml(active.market || "")}</span>${demoReady ? `<b>Preview concept</b>` : `<b>Generate demo first</b>`}</div><button class="card-footer-btn" ${demoReady && active.demoPath ? `onclick="window.open('${escapeHtml(active.demoPath)}','_blank')"` : "disabled"}>View Demo →</button></div></section></div>
-    <section class="detail-card" id="activity"><div class="detail-card-head"><h3>Pipeline Stage</h3><span>${escapeHtml(stageLabel(active.stage))}</span></div><div class="pipeline-detail"><div class="stage-track">${["new","audited","qualified","demo_ready","approved","contacted","won"].map((stage) => { const currentIndex = stageOrder.indexOf(active.stage); const idx = stageOrder.indexOf(stage as LeadStage); const klass = stage === active.stage ? "current" : idx <= currentIndex ? "done" : ""; return `<div class="track-node ${klass}"><div class="track-dot"></div><span>${escapeHtml(stageLabel(stage as LeadStage))}</span></div>`; }).join("")}</div></div></section>
-    <section class="detail-card" id="outreach" style="margin-top:8px"><div class="detail-card-head"><h3>Outreach Draft</h3><button class="edit-btn" onclick="alert('Edit outreach in the upcoming outreach composer.')">Edit</button></div><div class="detail-card-body outreach-grid"><div class="draft-fields"><label class="field-label">Subject<input class="field-input" value="${escapeHtml(outreachSubject)}" readonly></label><label class="field-label">Message<textarea class="field-textarea" readonly>${escapeHtml(outreachMessage)}</textarea></label></div><aside class="personalization"><strong>Personalization</strong><ul><li>References ${escapeHtml(active.category || "business type")}</li><li>Mentions ${escapeHtml(active.market || "local market")}</li><li>Uses verified opportunity evidence</li><li>Human approval before send</li></ul></aside></div></section>
-    <section class="detail-card" id="notes" style="margin-top:8px"><div class="detail-card-head"><h3>Notes</h3><span>${active.notes.length} saved</span></div><div class="detail-card-body"><div class="info-list">${active.notes.length ? active.notes.slice(0,5).map((note) => `<div class="info-line">• <b>${escapeHtml(note)}</b></div>`).join("") : `<div class="info-line">• <b>No lead notes yet.</b></div>`}</div></div></section></div></aside>` : `<aside class="detail-panel"><div class="detail-content"><div class="detail-card"><div class="detail-card-body">No production leads yet. Use Find New Leads to start the pipeline.</div></div></div></aside>`;
-
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="dark"><title>TechTactics Web Growth Command Center</title><style>${CSS}</style></head><body>
-  <div class="cockpit"><aside class="sidebar" id="sidebar"><div class="brand-block"><div class="brand-mark">TT</div></div><nav class="nav" aria-label="Primary"><a class="active" href="#overview">${navIcon("M3 11.5 12 4l9 7.5M5 10v10h14V10")}Overview</a><a href="#pipeline">${navIcon("M5 20V10M10 20V5M15 20v-8M20 20V3")}Pipeline</a><a href="#leads">${navIcon("M16 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M17 11a3 3 0 0 0 0-6M21 20v-2a4 4 0 0 0-3-3.87")}Leads</a><a href="#agents">${navIcon("M9 3h6v3H9zM6 8h12v10H6zM9 18v3M15 18v3M3 11h3M18 11h3")}Agents</a><a href="#inbox">${navIcon("M3 5h18v14H3zM3 7l9 7 9-7")}Inbox${config.zohoMcpUrl ? `<span class="badge">3</span>` : ""}</a><a href="#accounting">${navIcon("M6 3h12v18H6zM9 8h6M9 12h6M9 16h3")}Accounting</a><a href="#legal">${navIcon("M12 3v18M5 7h14M7 7l-3 7h6zM17 7l-3 7h6z")}Legal</a><a href="#integrations">${navIcon("M9 15l6-6M7 17l-2 2a3 3 0 0 1-4-4l4-4a3 3 0 0 1 4 0M17 7l2-2a3 3 0 1 1 4 4l-4 4a3 3 0 0 1-4 0")}Integrations</a><a href="#settings">${navIcon("M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2 3.46-.08-.02a1.7 1.7 0 0 0-1.95.22l-.75.43a1.7 1.7 0 0 0-.8 1.78V23h-4v-.19a1.7 1.7 0 0 0-.8-1.78l-.75-.43a1.7 1.7 0 0 0-1.95-.22l-.08.02-2-3.46.06-.06A1.7 1.7 0 0 0 5 15v-.86a1.7 1.7 0 0 0-1.14-1.6l-.08-.03V8.5l.08-.03A1.7 1.7 0 0 0 5 6.86V6a1.7 1.7 0 0 0-.34-1.02l-.06-.07 2-3.46.08.03a1.7 1.7 0 0 0 1.95-.22l.75-.43A1.7 1.7 0 0 0 10.18-.9V-1h4v.1a1.7 1.7 0 0 0 .8 1.73l.75.43a1.7 1.7 0 0 0 1.95.22l.08-.03 2 3.46-.06.07A1.7 1.7 0 0 0 19.4 6v.86a1.7 1.7 0 0 0 1.14 1.61l.08.03v4.01l-.08.03a1.7 1.7 0 0 0-1.14 1.6z")}Settings</a></nav><div class="automate-card"><strong>Automate</strong><b>Find. Grow. Scale.</b><p>AI agents + human oversight for real business growth.</p></div><div class="admin"><div class="admin-avatar">TT</div><div><strong>TechTactics</strong><span>Admin</span></div></div></aside>
-  <main class="main"><header class="command-header"><div class="command-title"><button class="mobile-menu" aria-label="Open navigation" onclick="toggleSidebar(true)">☰</button><div><h1>Web Growth Command Center</h1><p>Find → Audit → Demo → Approve → Contact → Close</p></div></div><div class="integration-strip">${integrationsTop}</div><div class="bell">♢</div></header>
-  <div class="workspace-shell"><section class="left-stack" id="overview"><section class="hero-command"><h2>Grow Local Businesses Online</h2><p>Our AI agents find, evaluate, and help local businesses get better websites with human approval at every step.</p><div class="hero-actions"><button class="btn-orange" onclick="showScoutHelp()">＋ &nbsp; Find New Leads</button><a class="btn-ghost" href="#pipeline">▶ &nbsp; Watch How It Works</a></div><div class="hero-callout"><strong>⌁ &nbsp; Local Businesses</strong><span>Real Opportunities</span><span>Stronger Communities</span></div></section><section class="metric-grid">${metrics}</section><section class="panel pipeline-overview" id="pipeline"><div class="panel-title"><h3>Pipeline Overview</h3></div><div class="pipeline-cards">${pipeline}</div></section><section class="panel recent-leads" id="leads"><div class="panel-title"><h3>Recent Leads</h3><div class="lead-toolbar"><input class="search-box" aria-label="Search leads" placeholder="⌕  Search leads..." oninput="filterLeads(this.value)"><button class="filter-btn" onclick="filterHighScore()">▽ &nbsp; Filter</button></div></div>${sorted.length ? `<table class="lead-table"><thead><tr><th>Business</th><th>Score</th><th>Stage</th><th>Market</th><th>Website</th><th>Value</th><th>Next Step</th><th>Updated</th><th></th></tr></thead><tbody id="leadRows">${rows}</tbody></table><div class="mobile-leads" id="mobileLeadCards">${mobileCards}</div>` : `<div class="detail-card-body">No leads yet. Click Find New Leads to start.</div>`}</section><section class="bottom-panels"><article class="panel" id="agents"><div class="panel-title"><h3>Agent Team</h3><small>● &nbsp; All Systems Operational</small></div><div class="agent-grid">${agentRows}</div></article><article class="panel" id="integrations"><div class="panel-title"><h3>Integrations</h3><small>Manage</small></div><div class="integration-list">${integrationRows}</div></article></section><span id="inbox"></span><span id="accounting"></span><span id="legal"></span><span id="settings"></span></section>${detail}</div></main></div>
-  <script>
-  function toggleSidebar(open){document.getElementById('sidebar')?.classList.toggle('open',open)}
-  function showScoutHelp(){alert('Scout from VM 100: docker exec -it web-growth-agent node dist/src/cli.js scout --market "Prairieville, LA" --category plumber --max-results 10 --source auto')}
-  function filterLeads(value){const q=value.toLowerCase();document.querySelectorAll('#leadRows tr,#mobileLeadCards .lead-card').forEach(el=>{el.style.display=(el.textContent||'').toLowerCase().includes(q)?'':'none'})}
-  function filterHighScore(){document.querySelectorAll('#leadRows tr').forEach(row=>{const score=Number(row.querySelector('.score-chip')?.textContent||0);row.style.display=score>=35?'':'none'});document.querySelectorAll('#mobileLeadCards .lead-card').forEach(card=>{const score=Number(card.querySelector('.lead-card-grid strong')?.textContent||0);card.style.display=score>=35?'':'none'})}
-  async function approve(id){const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/approve',{method:'POST'});if(!r.ok)alert(await r.text());else location.reload()}
-  async function sendZoho(id){if(!confirm('Send the approved outreach email through Zoho now?'))return;const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/send',{method:'POST'});if(!r.ok)alert(await r.text());else location.reload()}
-  async function stage(id,next){const r=await fetch('/api/leads/'+encodeURIComponent(id)+'/stage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({stage:next})});if(!r.ok)alert(await r.text());else location.href='/?lead='+encodeURIComponent(id)+'#detail'}
-  window.addEventListener('keydown',e=>{if(e.key==='Escape')toggleSidebar(false)})
-  </script></body></html>`;
+export function renderNotFoundDashboard(leads: Lead[]): string {
+  const page: DashboardPage = {
+    id: "overview",
+    path: "/",
+    title: "Page not found",
+    description: "The requested command-center page does not exist.",
+  };
+  const model = buildDashboardViewModel(leads, page);
+  const body = `<section class="surface"><div class="empty-state"><strong>Page not found</strong><p>Use the command-center navigation to return to a working area.</p><p><a class="button-secondary" href="/">Return to Overview</a></p></div></section>`;
+  return renderDashboardShell(model, body);
 }
