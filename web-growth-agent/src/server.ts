@@ -594,8 +594,7 @@ export function createApp(
         res.json(
           await setLeadStage(
             req.params.id,
-            req.body.stage
-              as LeadStage,
+            req.body.stage as LeadStage,
             store
           )
         );
