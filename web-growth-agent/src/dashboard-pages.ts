@@ -239,11 +239,152 @@ function renderSettings(): string {
   return `<section class="surface"><div class="section-head"><h2>Configuration status</h2><small>Non-secret values only</small></div><div class="workspace-section"><div class="info-grid"><div class="info-item"><span>Sales AI route</span><strong>${escapeHtml(aiProvider)}</strong></div><div class="info-item"><span>Default markets</span><strong>${config.defaultMarkets.length} configured</strong></div><div class="info-item"><span>Default categories</span><strong>${config.defaultCategories.length} configured</strong></div><div class="info-item"><span>Discovery endpoints</span><strong>${config.overpassUrls.length} configured</strong></div></div></div></section><div class="safe-note"><span class="safe-mark">✓</span><span>Secret values are never displayed. Credentials remain in the server environment.</span></div>`;
 }
 
+const workspaceTransitions: Record<LeadStage, LeadStage[]> = {
+  new: ["audited", "lost"],
+  audited: ["qualified", "lost"],
+  qualified: ["demo_ready", "lost"],
+  demo_ready: ["lost"],
+  approved: ["lost"],
+  contacted: ["responded", "lost"],
+  responded: ["proposal", "lost"],
+  proposal: ["won", "lost"],
+  won: [],
+  lost: [],
+};
+
+function safeWebHref(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value, "http://local.invalid");
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if (url.hostname === "local.invalid" && !value.startsWith("/")) return undefined;
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+function auditEvidence(lead: Lead): string[] {
+  if (!lead.audit) return ["Audit has not been run for this lead."];
+  const audit = lead.audit;
+  return [
+    `Reachable: ${audit.reachable ? "Yes" : "No"}`,
+    `HTTPS: ${audit.https ? "Yes" : "No"}`,
+    audit.statusCode ? `HTTP status: ${audit.statusCode}` : "HTTP status: Not recorded",
+    audit.responseMs ? `Initial response: ${audit.responseMs} ms` : "Initial response: Not recorded",
+    `Mobile viewport: ${audit.hasViewportMeta ? "Present" : "Not detected"}`,
+    `Primary CTA: ${audit.hasPrimaryCta ? "Detected" : "Not detected"}`,
+    `Contact form: ${audit.hasContactForm ? "Detected" : "Not detected"}`,
+    `Structured data: ${audit.hasStructuredData ? "Detected" : "Not detected"}`,
+    ...audit.notes,
+  ];
+}
+
+function renderWorkspaceActions(lead: Lead): string {
+  if (lead.stage === "demo_ready") {
+    const ready = Boolean(lead.salesAssets?.outreachDraft && lead.salesAssets.generatedAt);
+    return `<button class="button" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="approve(this.dataset.leadId)"${ready ? "" : " disabled"}>Approve outreach</button>${ready ? "" : `<span class="status status-muted">Generate and review the draft first</span>`}`;
+  }
+  if (lead.stage === "approved") {
+    const currentDraftApproved = Boolean(
+      lead.approvedForOutreach &&
+      lead.salesAssets?.generatedAt &&
+      lead.approvedOutreachGeneratedAt === lead.salesAssets.generatedAt,
+    );
+    const ready = Boolean(currentDraftApproved && lead.contactEmail);
+    const reason = !lead.contactEmail
+      ? "Add a contact email before sending"
+      : !currentDraftApproved
+        ? "Review and approve the current draft before sending"
+        : "Send only the approved draft";
+    return `<button class="button" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="sendZoho(this.dataset.leadId)"${ready ? "" : " disabled"}>Send through Zoho</button><span class="status ${ready ? "status-ready" : "status-muted"}">${reason}</span>`;
+  }
+  return `<span class="status status-muted">${escapeHtml(nextStep(lead))}</span>`;
+}
+
+function renderWorkspacePreview(model: DashboardViewModel, lead: Lead): string {
+  const href = safeWebHref(lead.demoPath);
+  const controls = [
+    model.capabilities.generatePreview
+      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="generateLead(this.dataset.leadId)">Generate preview</button>`
+      : "",
+    model.capabilities.uploadPreview
+      ? `<label class="button-secondary">Upload ZIP<input class="sr-only" type="file" accept=".zip,application/zip" data-lead-id="${escapeHtml(lead.id)}" onchange="uploadPreview(this.dataset.leadId,this)"></label>`
+      : "",
+    model.capabilities.restoreGeneratedPreview && Boolean(lead.demoPath || lead.salesAssets)
+      ? `<button class="button-secondary" type="button" data-lead-id="${escapeHtml(lead.id)}" onclick="restoreGeneratedPreview(this.dataset.leadId)">Restore generated</button>`
+      : "",
+    href
+      ? `<a class="button" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">Open private preview</a>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  return `<section class="surface workspace-section"><h2>Private website preview</h2><div class="preview-thumb"><strong>${escapeHtml(lead.salesAssets?.demoHeadline || lead.businessName)}</strong><span>${escapeHtml(lead.salesAssets?.demoSubheadline || "No generated preview is active yet.")}</span></div>${controls ? `<div class="action-bar">${controls}</div>` : `<p class="safe-note">Preview controls are unavailable on this server. Existing generated artifacts remain untouched.</p>`}</section>`;
+}
+
+function renderStageControl(lead: Lead): string {
+  const options = workspaceTransitions[lead.stage]
+    .map((stage) => `<option value="${stage}">${escapeHtml(stageLabel(stage))}</option>`)
+    .join("");
+  if (!options) return `<span class="status status-muted">No manual transition available</span>`;
+  return `<label class="inline-form"><span class="sr-only">Move lead to a valid next stage</span><select data-lead-id="${escapeHtml(lead.id)}" onchange="stage(this.dataset.leadId,this.value)"><option value="">Move to…</option>${options}</select></label>`;
+}
+
+export function renderLeadWorkspace(model: DashboardViewModel): string {
+  const lead = model.selectedLead;
+  if (!lead) {
+    return `<section class="surface"><div class="empty-state"><strong>Lead not found</strong><p>This lead may have been removed or the link may be incomplete.</p><p><a class="button-secondary" href="/leads">Return to leads</a></p></div></section>`;
+  }
+
+  const websiteHref = safeWebHref(lead.website);
+  const auditItems = auditEvidence(lead)
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+  const scoreItems = lead.score?.items.length
+    ? lead.score.items
+        .map(
+          (item) => `<li><strong>${escapeHtml(item.label)} · ${item.points} pts</strong><br>${escapeHtml(item.evidence)}</li>`,
+        )
+        .join("")
+    : `<li>No score evidence has been recorded.</li>`;
+  const notes = lead.notes.length
+    ? lead.notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")
+    : `<li>No notes have been recorded.</li>`;
+  const currentStageIndex = dashboardStageOrder.indexOf(lead.stage);
+  const stageTrack = dashboardStageOrder
+    .filter((stage) => stage !== "lost")
+    .map((stage) => {
+      const stageIndex = dashboardStageOrder.indexOf(stage);
+      const state = stage === lead.stage ? "current" : lead.stage !== "lost" && stageIndex < currentStageIndex ? "done" : "";
+      return `<div class="stage-node ${state}"><div class="stage-dot"></div><span>${escapeHtml(stageLabel(stage))}</span></div>`;
+    })
+    .join("");
+
+  return `<div class="workspace-stack">
+    <section class="surface workspace-section"><div class="content-card-meta"><div><h2 style="margin-bottom:5px">${escapeHtml(lead.businessName)}</h2><span class="status ${stageTone(lead.stage)}">${escapeHtml(stageLabel(lead.stage))}</span></div><a class="text-button" href="/leads">Back to leads</a></div><div class="action-bar" style="margin-top:16px">${renderWorkspaceActions(lead)}${renderStageControl(lead)}</div></section>
+    <div class="workspace-grid">
+      <div class="workspace-stack">
+        <section class="surface workspace-section"><h2>Business information</h2><div class="info-grid"><div class="info-item"><span>Category</span><strong>${escapeHtml(lead.category || "Not recorded")}</strong></div><div class="info-item"><span>Market</span><strong>${escapeHtml(lead.market || "Not recorded")}</strong></div><div class="info-item"><span>Address</span><strong>${escapeHtml(lead.address || "Not recorded")}</strong></div><div class="info-item"><span>Phone</span><strong>${escapeHtml(lead.phone || "Not recorded")}</strong></div><div class="info-item"><span>Email</span><strong>${escapeHtml(lead.contactEmail || "Not recorded")}</strong></div><div class="info-item"><span>Website</span><strong>${websiteHref ? `<a class="text-button" href="${escapeHtml(websiteHref)}" target="_blank" rel="noreferrer">Open website</a>` : "Not recorded"}</strong></div></div></section>
+        <section class="surface workspace-section"><h2>Recorded audit evidence</h2><ul class="evidence-list">${auditItems}</ul></section>
+        ${renderWorkspacePreview(model, lead)}
+        <section class="surface workspace-section"><h2>Pipeline activity</h2><div class="stage-track">${stageTrack}</div>${lead.stage === "lost" ? `<p class="safe-note">This lead is closed as lost. No further stage action is available.</p>` : ""}</section>
+      </div>
+      <aside class="workspace-stack">
+        <section class="surface workspace-section"><h2>Opportunity score</h2><div class="score-block"><div class="score-ring" style="--score:${Math.max(0, Math.min(100, lead.score?.total ?? 0))}"><strong>${lead.score?.total ?? 0}</strong></div><ul class="evidence-list">${scoreItems}</ul></div></section>
+        <section class="surface workspace-section"><h2>Outreach draft</h2><label class="field">Subject<input readonly value="${escapeHtml(`Website concept for ${lead.businessName} — TechTactics`)}"></label><label class="field">Message<textarea readonly>${escapeHtml(lead.salesAssets?.outreachDraft || "Generate sales assets before preparing outreach.")}</textarea></label><div class="safe-note"><span class="safe-mark">✓</span><span>Approving this draft does not send it. Zoho sending is a separate, confirmed action.</span></div></section>
+        <section class="surface workspace-section"><h2>Notes</h2><ul class="evidence-list">${notes}</ul></section>
+      </aside>
+    </div>
+  </div>`;
+}
+
 export function renderDashboardPage(model: DashboardViewModel): string {
   switch (model.page.id) {
     case "overview": return renderOverview(model);
     case "leads": return renderLeadTable(model);
-    case "lead": return `<section class="surface"><div class="empty-state"><strong>Lead workspace</strong><p>The requested lead workspace is loading.</p></div></section>`;
+    case "lead": return renderLeadWorkspace(model);
     case "pipeline": return renderPipeline(model);
     case "previews": return renderPreviews(model);
     case "agents": return renderAgents();
