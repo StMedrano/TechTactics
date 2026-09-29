@@ -69,6 +69,14 @@ describe("dashboard shell", () => {
     expect(html).toContain("if(event.key==='Escape')closeMoreSheet()");
   });
 
+  it("marks More as the current mobile destination on secondary pages", () => {
+    const html = render("/previews");
+
+    expect(html).toMatch(
+      /data-more-toggle[^>]*aria-current="page"/,
+    );
+  });
+
   it("locks in readable, reduced-motion, and narrow-screen behavior", () => {
     const html = render();
 
@@ -78,5 +86,12 @@ describe("dashboard shell", () => {
     expect(html).toContain("overflow-wrap:anywhere");
     expect(html).toContain("grid-template-columns:minmax(0,1fr)");
     expect(html).toContain("padding-bottom:calc(92px + env(safe-area-inset-bottom))");
+  });
+
+  it("does not force the document root wider than a narrow layout viewport", () => {
+    const html = render();
+
+    expect(html).not.toContain("html{min-width:320px");
+    expect(html).not.toContain("body{min-width:320px");
   });
 });
