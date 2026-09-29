@@ -2,6 +2,33 @@
 
 ## Daily workflow
 
+## Command Center navigation
+
+The web interface uses focused routes instead of one long cockpit:
+
+- `/` gives a quick look at owner attention, active leads, projected value, next work, pipeline counts, and configured services.
+- `/leads` and `/leads/:id` hold lead review, audit evidence, private preview, outreach approval, Zoho sending, activity, and notes.
+- `/pipeline` shows server-recorded stages. It does not use client-only drag and drop.
+- `/previews` exposes only the preview actions supported by the running server.
+- `/integrations` states permissions explicitly; Zoho Books is read only and Zoho Mail customer sends require human approval.
+
+On screens up to 860px, Home, Leads, Pipeline, and More stay in a bottom navigation bar. More opens the secondary page sheet. Escape closes the sheet, and reduced-motion preferences remove the transition.
+
+### Production reconciliation boundary
+
+The current GitHub branch includes the existing guarded `generateForLead` workflow and `/api/leads/:id/generate`. The live production checkout also has Designer-agent, uploaded-preview, and restore-generated behavior that was not present on GitHub `main` when this redesign began.
+
+Before deploying this branch, merge those production-only commits without removing these client helper names or their corresponding handlers:
+
+- `generateLead`
+- `uploadPreview`
+- `restoreGeneratedPreview`
+- `/api/leads/:id/generate`
+- `/api/leads/:id/upload-preview`
+- `/api/leads/:id/restore-generated-preview`
+
+Keep upload/restore controls capability-gated until the combined server exposes and tests those handlers. Run the full suite after reconciliation; do not replace the live production checkout directly from the GitHub branch before that merge.
+
 ### 1. Keep production data clean
 If synthetic evaluation records were ever loaded into the same store, remove only those fixtures:
 

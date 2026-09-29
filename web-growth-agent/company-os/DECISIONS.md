@@ -71,3 +71,13 @@ Record important TechTactics Web Growth decisions with the reason they were made
 **Affected systems:** Legal agent, contract/policy workflows, internal Zoho Mail coordination.
 
 **Revisit when:** Never for unauthorized practice or binding commitments; individual workflow permissions may be expanded only with appropriate counsel and explicit approval.
+
+## 2026-09-29 — Command Center uses focused server-rendered pages
+
+**Decision:** Keep Overview as a quick operational read and move detailed work to real server-rendered routes for Leads, Lead Workspace, Pipeline, Previews, Agents, Inbox, Accounting, Legal, Integrations, and Settings. On mobile, keep Home, Leads, and Pipeline in a persistent bottom bar and put secondary areas in a More sheet.
+
+**Rationale:** The previous single page mixed status, navigation, lead detail, and system context into one dense surface. Focused URLs improve scanability, preserve native navigation, and let the owner enter a workflow without reloading every other workflow into the same view. The mobile pattern keeps the highest-frequency work within thumb reach without squeezing the desktop sidebar into a narrow drawer.
+
+**Affected systems:** Command Center information architecture, Express routes, lead review, responsive navigation, operations documentation.
+
+**Revisit when:** Usage evidence shows a different primary mobile task set, or persistent inbox/accounting/legal workflows require a new navigation priority.

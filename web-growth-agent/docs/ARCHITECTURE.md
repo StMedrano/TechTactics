@@ -19,6 +19,32 @@ AI text is never considered audit evidence. The source-of-truth evidence is gene
 ## Persistence
 V1 uses an intentionally simple JSON store so the workflow is portable. A production deployment can replace `LeadStore` with PostgreSQL/Supabase without changing the domain model.
 
+## Command Center rendering
+
+The Command Center remains dependency-light and server-rendered:
+
+- `dashboard-model.ts` parses approved page paths and builds a deterministic view model from `Lead[]`.
+- `dashboard-pages.ts` renders one focused workflow body at a time.
+- `dashboard-shell.ts` owns the shared TechTactics chrome, responsive design system, desktop navigation, and mobile bottom navigation/More sheet.
+- `dashboard.ts` composes the model, page, and shell while preserving the public `renderDashboard` export.
+- `server.ts` maps real GET routes and leaves guarded mutations in the pipeline and communications modules.
+
+Overview intentionally contains only four quick-look metrics, three next-best-work items, a compact pipeline snapshot, and integration configuration health. Detailed tables, controls, and evidence belong to dedicated pages.
+
+Preview UI is capability-gated. The GitHub implementation exposes the existing guarded generation workflow. Uploaded-preview and restore-generated controls remain hidden until their production handlers are reconciled into the same branch.
+
+## Command Center routes
+
+- `/` — quick-look Overview
+- `/leads` — lead search/list
+- `/leads/:id` — focused lead workspace
+- `/pipeline` — full server-controlled pipeline
+- `/previews` — private website concepts
+- `/agents`, `/inbox`, `/accounting`, `/legal` — operational areas
+- `/integrations`, `/settings` — permission and non-secret configuration status
+
+Legacy `/?lead=<id>` links redirect to the canonical lead workspace.
+
 ## Future integrations
 - CRM/contact history
 - Richer Zoho thread/contact synchronization
