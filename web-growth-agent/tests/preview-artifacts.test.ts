@@ -85,6 +85,9 @@ describe("generated preview artifacts", () => {
 
     expect(result.preview).toEqual({
       source: "generated",
+      designSkill: "techtactics-ui-design",
+      designMode: "persuade",
+      designEngine: "designer-agent",
       updatedAt: "2026-09-27T01:00:00.000Z",
       entrypoint: "index.html",
       previewUrlPath: "/preview/lead_preview_artifact/",
